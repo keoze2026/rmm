@@ -1,0 +1,16 @@
+# Secrets — the per-machine token lives here, never commit it
+config.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# PyInstaller
+build/*.spec.bak
+dist/
+*.spec
+
+# OS
+.DS_Store

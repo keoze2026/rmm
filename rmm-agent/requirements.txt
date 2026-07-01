@@ -1,0 +1,19 @@
+# Core transport + inventory (work headless, needed everywhere)
+websockets==13.1
+psutil==6.1.0
+Pillow==11.0.0
+
+# Screen capture
+mss==9.0.2
+
+# Remote input INJECTION (Controllers only — no Listeners/keylogging)
+pynput==1.7.7
+
+# Visible presence: tray icon + notifications
+pystray==0.19.5
+
+# Optional fallback notifications on some platforms
+plyer==2.1.0
+
+# Build (not imported at runtime)
+pyinstaller==6.11.1

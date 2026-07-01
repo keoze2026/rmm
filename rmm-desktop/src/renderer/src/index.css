@@ -1,0 +1,77 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-ink text-fg font-sans antialiased;
+    margin: 0;
+    overflow: hidden; /* desktop chrome handles scroll regions */
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-edge rounded-full;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *:focus-visible {
+    outline: none;
+    @apply ring-2 ring-signal/70 ring-offset-2 ring-offset-ink;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md px-3.5 py-2
+           text-sm font-medium transition-colors disabled:opacity-50
+           disabled:cursor-not-allowed;
+  }
+  .btn-primary {
+    @apply btn bg-signal/90 text-ink hover:bg-signal;
+  }
+  .btn-ghost {
+    @apply btn border border-line text-dim hover:text-fg hover:border-edge;
+  }
+  .field {
+    @apply w-full rounded-md border border-line bg-ink/60 px-3 py-2 text-sm
+           text-fg placeholder:text-faint focus:border-signal/60;
+  }
+  .label {
+    @apply mb-1.5 block text-xs font-medium uppercase tracking-wide text-faint;
+  }
+  .card {
+    @apply rounded-lg border border-line bg-surface;
+  }
+
+  /* online status dot with a soft glow */
+  .dot-online {
+    @apply bg-online;
+    box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.15), 0 0 10px -1px rgba(52, 211, 153, 0.7);
+  }
+  .dot-offline {
+    @apply bg-offline;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

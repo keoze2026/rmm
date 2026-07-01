@@ -1,0 +1,15 @@
+{
+  "server_url": "wss://156.67.25.167:8765",
+  "token": "PASTE_PER_MACHINE_TOKEN_FROM_ENROLLMENT_HERE",
+  "heartbeat_interval": 10.0,
+  "frame_fps": 8.0,
+  "frame_quality": 60,
+  "frame_max_width": 1600,
+  "monitor_index": 1,
+  "reconnect_min": 1.0,
+  "reconnect_max": 30.0,
+  "tls_insecure": true,
+  "show_tray_icon": true,
+  "notify_on_session": true,
+  "allow_remote_input": true
+}

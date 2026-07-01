@@ -1,0 +1,19 @@
+appId: com.keoze.rmmconsole
+productName: RMM Console
+directories:
+  output: dist
+files:
+  - out/**/*
+  - package.json
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Utility
+win:
+  target:
+    - nsis
+mac:
+  target:
+    - dmg
+  category: public.app-category.utilities
