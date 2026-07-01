@@ -88,9 +88,18 @@ def main(argv: list[str] | None = None) -> int:
         config.token = args.token
 
     if not config.token:
-        print("[agent] no token configured. Set it in config.json or pass --token.",
-              file=sys.stderr)
-        return 2
+        if config.enroll_secret:
+            from agent.enroll import ensure_token
+            try:
+                config.token = ensure_token(config)
+                print("[agent] enrolled; token cached.", file=sys.stderr)
+            except Exception as exc:
+                print(f"[agent] auto-enroll failed: {exc}", file=sys.stderr)
+                return 2
+        else:
+            print("[agent] no token configured. Set it in config.json or pass --token.",
+                  file=sys.stderr)
+            return 2
 
     try:
         return asyncio.run(_amain(config, headless=args.headless))

@@ -56,6 +56,8 @@ class AgentConfig:
     server_url: str = "ws://localhost:8765"
     # Per-machine enrollment token issued by the server at enroll time.
     token: str = ""
+    # Shared enroll secret (baked into installer) for seamless first-run enrollment.
+    enroll_secret: str = ""
 
     # Heartbeat cadence. Server marks offline after AGENT_OFFLINE_AFTER (30s),
     # so 10s gives us three misses of headroom.
@@ -98,7 +100,7 @@ class AgentConfig:
 
         # Environment overrides (RMM_SERVER_URL, RMM_TOKEN, ...).
         for f in (
-            "server_url", "token", "heartbeat_interval", "frame_fps",
+            "server_url", "token", "enroll_secret", "heartbeat_interval", "frame_fps",
             "frame_quality", "frame_max_width", "monitor_index",
             "reconnect_min", "reconnect_max", "tls_insecure",
             "show_tray_icon", "notify_on_session", "allow_remote_input",
@@ -110,6 +112,7 @@ class AgentConfig:
         return cls(
             server_url=str(data.get("server_url", cls.server_url)),
             token=str(data.get("token", cls.token)),
+            enroll_secret=str(data.get("enroll_secret", cls.enroll_secret)),
             heartbeat_interval=float(data.get("heartbeat_interval", cls.heartbeat_interval)),
             frame_fps=float(data.get("frame_fps", cls.frame_fps)),
             frame_quality=int(data.get("frame_quality", cls.frame_quality)),
@@ -133,9 +136,22 @@ class AgentConfig:
             base = base + "/ws/agent"
         return f"{base}{sep}token={self.token}"
 
+    @property
+    def http_base(self) -> str:
+        """HTTP(S) base URL derived from server_url (for the enroll call)."""
+        base = self.server_url.rstrip("/")
+        for suf in ("/ws/agent", "/ws/admin", "/ws"):
+            if base.endswith(suf):
+                base = base[: -len(suf)]
+        if base.startswith("wss://"):
+            return "https://" + base[len("wss://"):]
+        if base.startswith("ws://"):
+            return "http://" + base[len("ws://"):]
+        return base
+
 
 _KNOWN_KEYS = {
-    "server_url", "token", "heartbeat_interval", "frame_fps", "frame_quality",
+    "server_url", "token", "enroll_secret", "heartbeat_interval", "frame_fps", "frame_quality",
     "frame_max_width", "monitor_index", "reconnect_min", "reconnect_max",
     "tls_insecure", "show_tray_icon", "notify_on_session", "allow_remote_input",
 }
