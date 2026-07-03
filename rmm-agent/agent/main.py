@@ -82,6 +82,11 @@ def main(argv: list[str] | None = None) -> int:
     from pathlib import Path
     config_path = Path(args.config) if args.config else resolve_config_path()
     config = AgentConfig.load(config_path)
+    try:
+        from agent.autostart import install_autostart
+        install_autostart()
+    except Exception:
+        pass
     if args.server:
         config.server_url = args.server
     if args.token:
