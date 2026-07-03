@@ -1,0 +1,44 @@
+name: Build Agent
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "agent-v*"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: rmm-agent-windows
+          - os: macos-latest
+            artifact: rmm-agent-mac
+          - os: ubuntu-latest
+            artifact: rmm-agent-linux
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: rmm-agent
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pyinstaller
+      - name: Build agent
+        run: pyinstaller rmm-agent.spec
+      - name: Bundle config with the build
+        shell: bash
+        run: cp config.json dist/ 2>/dev/null || true
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: rmm-agent/dist/*
+          if-no-files-found: ignore
