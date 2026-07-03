@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, machines, sessions
+from app.api import auth, enroll, machines, sessions
 from app.config import settings
 from app.database import close_db, init_db
 from app.reaper import offline_reaper
@@ -49,6 +49,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(machines.router)
 app.include_router(sessions.router)
+app.include_router(enroll.router)
 # WebSocket routers
 app.include_router(handlers.router)
 
