@@ -23,22 +23,39 @@ jobs:
       run:
         working-directory: rmm-agent
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Write baked config.json
+        shell: bash
         run: |
-          pip install -r requirements.txt
-          pip install pyinstaller
+          cat > config.json << 'CFG'
+          {
+            "server_url": "${{ secrets.AGENT_SERVER_URL }}",
+            "enroll_secret": "${{ secrets.AGENT_ENROLL_SECRET }}",
+            "tls_insecure": false
+          }
+          CFG
+
       - name: Build agent
         run: pyinstaller rmm-agent.spec
-      - name: Bundle config with the build
+
+      - name: Bundle config next to binary
         shell: bash
-        run: cp config.json dist/ 2>/dev/null || true
-      - name: Upload
+        run: cp config.json dist/
+
+      - name: Upload installer
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: rmm-agent/dist/*
+          path: |
+            rmm-agent/dist/*
           if-no-files-found: ignore
