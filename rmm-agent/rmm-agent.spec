@@ -1,50 +1,61 @@
-name: Build Agent
+# -*- mode: python ; coding: utf-8 -*-
+import sys
+from PyInstaller.utils.hooks import collect_all
 
-on:
-  workflow_dispatch:
-  push:
-    tags:
-      - "agent-v*"
+datas = [('config.json', '.')]
+binaries = []
+hiddenimports = []
 
-jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            artifact: rmm-agent-windows
-          - os: macos-latest
-            artifact: rmm-agent-mac
-          - os: ubuntu-latest
-            artifact: rmm-agent-linux
-    runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        working-directory: rmm-agent
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install Linux system libraries
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y python3-dev libgirepository1.0-dev gcc pkg-config libcairo2-dev gir1.2-gtk-3.0 libgtk-3-dev
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt || true
-          pip install pyinstaller mss pillow psutil websockets plyer
-      - name: Build agent
-        run: pyinstaller rmm-agent.spec
-      - name: Bundle config with the build
-        shell: bash
-        run: cp config.json dist/ 2>/dev/null || true
-      - name: Upload
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact }}
-          path: rmm-agent/dist/*
-          if-no-files-found: ignore
+
+def _add(pkg):
+    try:
+        d, b, h = collect_all(pkg)
+        datas.extend(d)
+        binaries.extend(b)
+        hiddenimports.extend(h)
+    except Exception as exc:
+        print(f"[spec] skipping {pkg}: {exc}")
+
+
+for pkg in ("PIL", "mss", "plyer", "websockets", "psutil"):
+    _add(pkg)
+_add("pynput")
+_add("pystray")
+
+if sys.platform.startswith("win"):
+    hiddenimports += ["mss.windows", "pynput.keyboard._win32", "pynput.mouse._win32", "pystray._win32"]
+elif sys.platform == "darwin":
+    hiddenimports += ["mss.darwin", "pynput.keyboard._darwin", "pynput.mouse._darwin", "pystray._darwin"]
+else:
+    hiddenimports += ["mss.linux", "pynput.keyboard._xorg", "pynput.mouse._xorg",
+                      "pystray._xorg", "pystray._appindicator", "pystray._gtk"]
+
+hiddenimports += ["PIL.Image", "PIL.ImageDraw"]
+
+a = Analysis(
+    ["run_agent.py"],
+    pathex=["."],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
+    excludes=["tkinter", "matplotlib", "numpy"],
+    noarchive=False,
+)
+
+pyz = PYZ(a.pure, a.zipped_data)
+
+exe = EXE(
+    pyz, a.scripts, a.binaries, a.zipfiles, a.datas, [],
+    name="rmm-agent",
+    debug=False, strip=False, upx=True,
+    console=False,
+)
+
+if sys.platform == "darwin":
+    app = BUNDLE(
+        exe,
+        name="Remote Support Agent.app",
+        icon=None,
+        bundle_identifier="com.remotedesk247.rmmagent",
+        info_plist={"NSHighResolutionCapable": True, "LSUIElement": True},
+    )
