@@ -36,8 +36,26 @@ function createWindow(): void {
   }
 }
 
+// Trust the RMM server's self-signed TLS certificate.
+// Only the RMM server host is allowed; everything else stays strict.
+const TRUSTED_HOSTS = new Set(['156.67.25.167'])
+app.on('certificate-error', (event, _webContents, url, _error, _certificate, callback) => {
+  try {
+    const host = new URL(url).hostname
+    if (TRUSTED_HOSTS.has(host)) {
+      event.preventDefault()
+      callback(true) // trust it
+      return
+    }
+  } catch {
+    // fall through to reject
+  }
+  callback(false) // reject everything else
+})
+
 app.whenReady().then(() => {
   createWindow()
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
