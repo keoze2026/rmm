@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    color-scheme: dark;
+    color-scheme: light;
   }
 
   html,
@@ -32,37 +32,63 @@
 
   *:focus-visible {
     outline: none;
-    @apply ring-2 ring-signal/70 ring-offset-2 ring-offset-ink;
+    @apply ring-2 ring-signal/40 ring-offset-2 ring-offset-ink;
   }
 }
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-md px-3.5 py-2
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2
            text-sm font-medium transition-colors disabled:opacity-50
            disabled:cursor-not-allowed;
   }
   .btn-primary {
-    @apply btn bg-signal/90 text-ink hover:bg-signal;
+    @apply btn bg-signal text-white hover:bg-signalHover shadow-card;
   }
   .btn-ghost {
-    @apply btn border border-line text-dim hover:text-fg hover:border-edge;
+    @apply btn border border-line bg-surface text-dim hover:text-fg hover:border-edge;
   }
   .field {
-    @apply w-full rounded-md border border-line bg-ink/60 px-3 py-2 text-sm
-           text-fg placeholder:text-faint focus:border-signal/60;
+    @apply w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm
+           text-fg placeholder:text-faint focus:border-signal focus:ring-2 focus:ring-signal/20;
   }
   .label {
-    @apply mb-1.5 block text-xs font-medium uppercase tracking-wide text-faint;
+    @apply mb-1.5 block text-xs font-medium uppercase tracking-wide text-dim;
   }
   .card {
-    @apply rounded-lg border border-line bg-surface;
+    @apply rounded-xl border border-line bg-surface shadow-card;
+  }
+
+  /* sidebar nav item */
+  .nav-item {
+    @apply flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium
+           text-dim transition-colors cursor-pointer;
+  }
+  .nav-item:hover {
+    @apply bg-ink text-fg;
+  }
+  .nav-item-active {
+    @apply bg-signal/10 text-signal;
+  }
+
+  /* status tags */
+  .tag {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+  .tag-pending {
+    @apply tag bg-warn/15 text-warn;
+  }
+  .tag-success {
+    @apply tag bg-success/15 text-success;
+  }
+  .tag-danger {
+    @apply tag bg-danger/15 text-danger;
   }
 
   /* online status dot with a soft glow */
   .dot-online {
     @apply bg-online;
-    box-shadow: 0 0 0 3px rgba(52, 211, 153, 0.15), 0 0 10px -1px rgba(52, 211, 153, 0.7);
+    box-shadow: 0 0 0 3px rgba(63, 191, 127, 0.15), 0 0 10px -1px rgba(63, 191, 127, 0.6);
   }
   .dot-offline {
     @apply bg-offline;
@@ -74,4 +100,4 @@
     animation: none !important;
     transition: none !important;
   }
-}
+} 

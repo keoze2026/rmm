@@ -1,0 +1,5 @@
+{
+  "server_url": "wss://rmm.remotedesk247.com/ws/agent",
+  "enroll_secret": "c5332df2095d803da6ab4c01eaf89fc3",
+  "tls_insecure": false
+}
