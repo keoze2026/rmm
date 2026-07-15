@@ -1,6 +1,6 @@
 """First-run auto-enrollment.
 
-If the agent has no token but was shipped with an enroll_secret (baked into the
+If the agent ha ;3 s no token but was shipped with an enroll_secret (baked into the
 installer), it registers itself with the server on first run, caches the issued
 token machine-wide, and reuses it on every subsequent run. The user never
 handles a token.
