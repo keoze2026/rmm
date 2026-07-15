@@ -17,18 +17,40 @@ from pathlib import Path
 
 
 def _cache_candidates() -> list[Path]:
+    """Where to read/write the enrollment token, most-persistent first.
+
+    IMPORTANT: never prefer a temp dir — /tmp is wiped on reboot, which would
+    make the agent re-enroll and create a duplicate machine every boot. We put
+    persistent per-user locations first and only use the machine-wide dir if it
+    is NOT a temp path.
+    """
+    import tempfile
     paths: list[Path] = []
-    try:
-        from agent.singleton import machine_wide_dir
-        paths.append(machine_wide_dir() / "agent_token")
-    except Exception:
-        pass
+
+    # 1) Persistent per-user data dir (always writable, survives reboot).
+    paths.append(Path.home() / ".local" / "share" / "rmm" / "agent_token")
+
+    # 2) Next to the frozen executable (persistent, portable installs).
     try:
         if getattr(sys, "frozen", False):
             paths.append(Path(sys.executable).resolve().parent / "agent_token")
     except Exception:
         pass
+
+    # 3) Per-user config dir (persistent).
     paths.append(Path.home() / ".config" / "rmm" / "agent_token")
+
+    # 4) Machine-wide dir — ONLY if it is not a temp path (so multi-user PCs
+    #    share one identity), never /tmp.
+    try:
+        from agent.singleton import machine_wide_dir
+        mw = machine_wide_dir()
+        tmp = Path(tempfile.gettempdir()).resolve()
+        if tmp not in (mw.resolve(), *mw.resolve().parents):
+            paths.append(mw / "agent_token")
+    except Exception:
+        pass
+
     return paths
 
 
