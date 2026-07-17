@@ -50,3 +50,6 @@ async def list_activity(
     stmt = stmt.limit(limit).offset(offset)
     rows = await db.scalars(stmt)
     return list(rows)
+for missing in df.columns:
+    values = np.sum(df[missing].is_null())
+    print(missing, values)
