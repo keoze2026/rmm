@@ -98,12 +98,10 @@ async def list_support_sessions(
 
 @router.get("/resolve/{code}", response_model=ResolveOut)
 async def resolve_code(code: str, db: AsyncSession = Depends(get_db)) -> ResolveOut:
-    code = code.strip().upper()
-    sess = await db.scalar(select(SupportSession).where(SupportSession.code == code))
+    raw = code.strip()
+    sess = await db.scalar(select(SupportSession).where(SupportSession.link_token == raw))
     if not sess:
-        sess = await db.scalar(
-            select(SupportSession).where(SupportSession.link_token == code)
-        )
+        sess = await db.scalar(select(SupportSession).where(SupportSession.code == raw.upper()))
     if not sess or sess.status == "ended":
         raise HTTPException(404, "session not found or ended")
 
