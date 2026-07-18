@@ -21,6 +21,12 @@ def _base_dir() -> Path:
     temp dir, so we anchor config next to the actual .exe/.app, not the bundle.
     """
     if getattr(sys, "frozen", False):
+        # PyInstaller extracts bundled data files to sys._MEIPASS. Prefer a
+        # config.json bundled INSIDE the binary so the single downloaded file
+        # is fully self-contained; fall back to one sitting next to the exe.
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass and (Path(meipass) / "config.json").exists():
+            return Path(meipass)
         return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parent.parent
 
