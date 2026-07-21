@@ -94,6 +94,14 @@ jobs:
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
           Copy-Item installer\RemoteSupportAgent-Setup.exe dist\RemoteSupportAgent-Setup.exe -Force
 
+      # Windows: leave ONLY the installer so the download is a single file.
+      - name: Keep only the Windows installer
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          Get-ChildItem dist -Exclude "RemoteSupportAgent-Setup.exe" | Remove-Item -Recurse -Force
+          Get-ChildItem dist
+
       # ---------------- LINUX: keep the raw binary + config ----------------
       - name: Bundle config next to binary
         shell: bash
