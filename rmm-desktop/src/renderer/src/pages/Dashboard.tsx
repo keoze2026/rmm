@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Plus, Search, RefreshCw, Monitor, Activity, Radio } from 'lucide-react'
+import { Plus, Search, RefreshCw, Monitor, Activity, Radio, Copy, Check, LifeBuoy } from 'lucide-react'
 import { useAuth } from '../auth'
 import { useMachines } from '../useMachines'
 import { MachineList } from '../components/MachineList'
@@ -9,7 +9,7 @@ import { RemoteViewer } from '../components/RemoteViewer'
 import { ActivityLog } from '../components/ActivityLog'
 import type { Machine } from '../types'
 
-type Tab = 'machines' | 'activity'
+type Tab = 'machines' | 'activity' | 'support'
 
 export function Dashboard() {
   const { session, signOut } = useAuth()
@@ -57,6 +57,13 @@ export function Dashboard() {
             <Activity className="h-4 w-4" />
             Activity
           </div>
+          <div
+            onClick={() => setTab('support')}
+            className={`nav-item ${tab === 'support' ? 'nav-item-active' : ''}`}
+          >
+            <LifeBuoy className="h-4 w-4" />
+            Support Session
+          </div>
         </nav>
 
         <div className="mt-auto px-5 py-4">
@@ -83,7 +90,7 @@ export function Dashboard() {
 
         <main className="flex-1 overflow-auto px-8 py-6">
           <div className="mx-auto max-w-5xl">
-            {tab === 'machines' ? (
+            {tab === 'machines' && (
               <>
                 <div className="mb-5">
                   <h1 className="text-xl font-semibold text-fg">Machines</h1>
@@ -117,7 +124,9 @@ export function Dashboard() {
 
                 <MachineList machines={machines} query={query} onOpen={setViewing} />
               </>
-            ) : (
+            )}
+
+            {tab === 'activity' && (
               <>
                 <div className="mb-5">
                   <h1 className="text-xl font-semibold text-fg">Activity</h1>
@@ -126,6 +135,8 @@ export function Dashboard() {
                 <ActivityLog base={base} token={token} machines={machines} />
               </>
             )}
+
+            {tab === 'support' && <SupportPanel base={base} token={token} />}
           </div>
         </main>
       </div>
@@ -151,3 +162,112 @@ export function Dashboard() {
     </div>
   )
 }
+
+// ---------- Support Session panel (create code + link, inside the console) ----------
+function SupportPanel({ base, token }: { base: string; token: string }) {
+  const [loading, setLoading] = useState(false)
+  const [err, setErr] = useState('')
+  const [sess, setSess] = useState<{ code: string; link: string } | null>(null)
+  const [status, setStatus] = useState('waiting')
+  const [copied, setCopied] = useState(false)
+
+  const api = base.trim().replace(/\/+$/, '')
+
+  async function create() {
+    setErr('')
+    setLoading(true)
+    try {
+      const r = await fetch(`${api}/api/support/create`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!r.ok) throw new Error('create failed')
+      const d = await r.json()
+      setSess({ code: d.code, link: d.link })
+      setStatus('waiting')
+      poll(d.code)
+    } catch {
+      setErr('Could not create session. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function poll(code: string) {
+    const t = setInterval(async () => {
+      try {
+        const r = await fetch(`${api}/api/support/resolve/${encodeURIComponent(code)}`)
+        if (r.ok) {
+          const d = await r.json()
+          setStatus(d.status)
+          if (d.status === 'joined') clearInterval(t)
+        }
+      } catch {
+        /* ignore */
+      }
+    }, 4000)
+  }
+
+  function copyLink() {
+    if (!sess) return
+    navigator.clipboard.writeText(sess.link)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  return (
+    <>
+      <div className="mb-5">
+        <h1 className="text-xl font-semibold text-fg">Support Session</h1>
+        <p className="text-sm text-dim">
+          Create a code and link to share with the person you're helping
+        </p>
+      </div>
+
+      <div className="card max-w-md p-6">
+        {!sess ? (
+          <button className="btn-primary w-full justify-center" onClick={create} disabled={loading}>
+            <Plus className="h-4 w-4" />
+            {loading ? 'Creating…' : 'Create Session'}
+          </button>
+        ) : (
+          <div>
+            <div className="mb-4 rounded-lg border border-dashed border-line bg-ink p-5 text-center">
+              <div className="mb-1 text-xs uppercase tracking-wide text-dim">Share this code</div>
+              <div className="text-3xl font-extrabold tracking-widest text-signal">{sess.code}</div>
+            </div>
+
+            <div className="mb-2 text-xs uppercase tracking-wide text-dim">Or share this link</div>
+            <div className="mb-4 flex gap-2">
+              <input readOnly value={sess.link} className="field text-xs" />
+              <button className="btn-ghost" onClick={copyLink} title="Copy link">
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </button>
+            </div>
+
+            <div className="flex items-center justify-center gap-2 rounded-lg bg-ink p-3 text-sm text-dim">
+              <span
+                className={`h-2 w-2 rounded-full ${
+                  status === 'joined' ? 'dot-online' : 'dot-offline'
+                }`}
+              />
+              {status === 'joined'
+                ? 'Connected! Open Machines to control it.'
+                : 'Waiting for the person to connect…'}
+            </div>
+
+            <button className="btn-ghost mt-4 w-full justify-center" onClick={() => setSess(null)}>
+              Create another
+            </button>
+          </div>
+        )}
+
+        {err && (
+          <div className="mt-3 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+            {err}
+          </div>
+        )}
+      </div>
+    </>
+  )
+} 
