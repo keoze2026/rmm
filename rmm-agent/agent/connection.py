@@ -76,7 +76,11 @@ class AgentConnection:
     def _ssl_context(self):
         if not self.config.agent_ws_url.startswith("wss"):
             return None
-        ctx = ssl.create_default_context()
+        try:
+            import certifi
+            ctx = ssl.create_default_context(cafile=certifi.where())
+        except Exception:
+            ctx = ssl.create_default_context()
         if self.config.tls_insecure:
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE

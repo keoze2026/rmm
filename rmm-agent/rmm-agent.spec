@@ -30,7 +30,14 @@ else:
     hiddenimports += ["mss.linux", "pynput.keyboard._xorg", "pynput.mouse._xorg",
                       "pystray._xorg", "pystray._appindicator", "pystray._gtk"]
 
-hiddenimports += ["PIL.Image", "PIL.ImageDraw"]
+hiddenimports += ["PIL.Image", "PIL.ImageDraw", "certifi"]
+
+# Bundle certifi's CA bundle so TLS verification works on Windows.
+try:
+    from PyInstaller.utils.hooks import collect_data_files
+    datas += collect_data_files("certifi")
+except Exception:
+    pass
 
 a = Analysis(
     ["run_agent.py"],

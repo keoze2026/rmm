@@ -17,3 +17,4 @@ plyer==2.1.0
 
 # Build (not imported at runtime)
 pyinstaller==6.11.1
+certifi==2024.8.30

@@ -87,7 +87,13 @@ def auto_enroll(config) -> str:
 
     ctx = None
     if url.startswith("https"):
-        ctx = ssl.create_default_context()
+        # Use certifi's CA bundle so verification works on Windows too (Windows
+        # doesn't expose system CAs to Python the way Linux does).
+        try:
+            import certifi
+            ctx = ssl.create_default_context(cafile=certifi.where())
+        except Exception:
+            ctx = ssl.create_default_context()
         if config.tls_insecure:
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
