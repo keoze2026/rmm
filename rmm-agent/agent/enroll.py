@@ -1,6 +1,6 @@
 """First-run auto-enrollment.
 
-If the agent ha ;3 s no token but was shipped with an enroll_secret (baked into the
+If the agent has no token but was shipped with an enroll_secret (baked into the
 installer), it registers itself with the server on first run, caches the issued
 token machine-wide, and reuses it on every subsequent run. The user never
 handles a token.
@@ -17,31 +17,15 @@ from pathlib import Path
 
 
 def _cache_candidates() -> list[Path]:
-    """Where to read/write the enrollment token, most-persistent first.
-
-    IMPORTANT: never prefer a temp dir — /tmp is wiped on reboot, which would
-    make the agent re-enroll and create a duplicate machine every boot. We put
-    persistent per-user locations first and only use the machine-wide dir if it
-    is NOT a temp path.
-    """
     import tempfile
     paths: list[Path] = []
-
-    # 1) Persistent per-user data dir (always writable, survives reboot).
     paths.append(Path.home() / ".local" / "share" / "rmm" / "agent_token")
-
-    # 2) Next to the frozen executable (persistent, portable installs).
     try:
         if getattr(sys, "frozen", False):
             paths.append(Path(sys.executable).resolve().parent / "agent_token")
     except Exception:
         pass
-
-    # 3) Per-user config dir (persistent).
     paths.append(Path.home() / ".config" / "rmm" / "agent_token")
-
-    # 4) Machine-wide dir — ONLY if it is not a temp path (so multi-user PCs
-    #    share one identity), never /tmp.
     try:
         from agent.singleton import machine_wide_dir
         mw = machine_wide_dir()
@@ -50,7 +34,6 @@ def _cache_candidates() -> list[Path]:
             paths.append(mw / "agent_token")
     except Exception:
         pass
-
     return paths
 
 
@@ -78,16 +61,24 @@ def save_cached_token(token: str) -> None:
 
 def auto_enroll(config) -> str:
     url = config.http_base.rstrip("/") + "/api/enroll"
-    body = json.dumps({
+    payload = {
         "enroll_secret": config.enroll_secret,
         "name": socket.gethostname() or "endpoint",
         "hostname": socket.gethostname(),
         "os_name": f"{platform.system()} {platform.release()}".strip(),
-    }).encode("utf-8")
+    }
+    code = getattr(config, "support_code", None)
+    if code:
+        payload["support_code"] = code
+    body = json.dumps(payload).encode("utf-8")
 
     ctx = None
     if url.startswith("https"):
-        ctx = ssl.create_default_context()
+        try:
+            import certifi
+            ctx = ssl.create_default_context(cafile=certifi.where())
+        except Exception:
+            ctx = ssl.create_default_context()
         if config.tls_insecure:
             ctx.check_hostname = False
             ctx.verify_mode = ssl.CERT_NONE
@@ -103,7 +94,6 @@ def auto_enroll(config) -> str:
 
 
 def ensure_token(config) -> str:
-    """Return a usable token: existing -> cached -> freshly enrolled."""
     if config.token:
         return config.token
     cached = load_cached_token()

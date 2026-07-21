@@ -42,6 +42,8 @@ class SupportOut(BaseModel):
     code: str
     status: str
     label: str | None = None
+    machine_id: uuid.UUID | None = None
+    joined_at: datetime | None = None
 
     class Config:
         from_attributes = True
