@@ -21,12 +21,6 @@ def _base_dir() -> Path:
     temp dir, so we anchor config next to the actual .exe/.app, not the bundle.
     """
     if getattr(sys, "frozen", False):
-        # PyInstaller extracts bundled data files to sys._MEIPASS. Prefer a
-        # config.json bundled INSIDE the binary so the single downloaded file
-        # is fully self-contained; fall back to one sitting next to the exe.
-        meipass = getattr(sys, "_MEIPASS", None)
-        if meipass and (Path(meipass) / "config.json").exists():
-            return Path(meipass)
         return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parent.parent
 
@@ -35,6 +29,12 @@ DEFAULT_CONFIG_PATH = _base_dir() / "config.json"
 
 
 def resolve_config_path() -> Path:
+    """Pick the config file to use.
+
+    Search order: RMM_CONFIG env var -> config.json next to the executable ->
+    the machine-wide dir (shared by all users on a multi-user PC). Falls back to
+    the next-to-exe path for first-time writes.
+    """
     env = os.environ.get("RMM_CONFIG")
     if env:
         return Path(env)
@@ -44,9 +44,6 @@ def resolve_config_path() -> Path:
         candidates.append(machine_wide_dir() / "config.json")
     except Exception:
         pass
-    meipass = getattr(sys, "_MEIPASS", None)
-    if meipass:
-        candidates.append(Path(meipass) / "config.json")
     for c in candidates:
         if c.exists():
             return c

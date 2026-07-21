@@ -8,6 +8,7 @@ import { AddMachineDialog } from '../components/AddMachineDialog'
 import { RemoteViewer } from '../components/RemoteViewer'
 import { ActivityLog } from '../components/ActivityLog'
 import type { Machine } from '../types'
+import { SupportConsole } from '../components/SupportConsole'
 
 type Tab = 'machines' | 'activity' | 'support'
 
@@ -136,7 +137,7 @@ export function Dashboard() {
               </>
             )}
 
-            {tab === 'support' && <SupportPanel base={base} token={token} />}
+            {tab === 'support' && <SupportConsole base={base} token={token} email={session!.user.email} onSignOut={signOut} wsState={wsState} />}
           </div>
         </main>
       </div>
