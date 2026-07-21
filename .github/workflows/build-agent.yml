@@ -59,6 +59,42 @@ jobs:
       - name: Build agent
         run: pyinstaller rmm-agent.spec
 
+      # ---------------- WINDOWS: wrap the .exe in an Inno Setup installer ----------------
+      # Defender is far more likely to allow a proper installer than a bare PyInstaller .exe.
+      # The installer copies the app to Program Files, adds a Start-menu + startup shortcut,
+      # and launches it at the end so the machine appears immediately.
+      - name: Build Windows installer
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          $iss = @"
+          [Setup]
+          AppName=Remote Support Agent
+          AppVersion=1.0
+          DefaultDirName={autopf}\RemoteSupportAgent
+          DefaultGroupName=Remote Support Agent
+          DisableProgramGroupPage=yes
+          OutputDir=installer
+          OutputBaseFilename=RemoteSupportAgent-Setup
+          PrivilegesRequired=lowest
+          ArchitecturesInstallIn64BitMode=x64compatible
+
+          [Files]
+          Source: "dist\rmm-agent.exe"; DestDir: "{app}"; Flags: ignoreversion
+
+          [Icons]
+          Name: "{group}\Remote Support Agent"; Filename: "{app}\rmm-agent.exe"
+          Name: "{userstartup}\Remote Support Agent"; Filename: "{app}\rmm-agent.exe"
+
+          [Run]
+          Filename: "{app}\rmm-agent.exe"; Description: "Start Remote Support Agent"; Flags: nowait postinstall skipifsilent
+          "@
+          Set-Content -Path installer.iss -Value $iss -Encoding UTF8
+          # Inno Setup is preinstalled on GitHub windows-latest runners.
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+          Copy-Item installer\RemoteSupportAgent-Setup.exe dist\RemoteSupportAgent-Setup.exe -Force
+
+      # ---------------- LINUX: keep the raw binary + config ----------------
       - name: Bundle config next to binary
         shell: bash
         run: cp config.json dist/ || true
