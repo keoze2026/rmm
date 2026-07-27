@@ -3,19 +3,44 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
 
+# def _base_dir() -> Path:
+#     if getattr(sys, "frozen", False):
+#         meipass = getattr(sys, "_MEIPASS", None)
+#         if meipass and (Path(meipass) / "config.json").exists():
+#             return Path(meipass)
+#         return Path(sys.executable).resolve().parent
+#     return Path(__file__).resolve().parent.parent
+
+
 def _base_dir() -> Path:
     if getattr(sys, "frozen", False):
+        exe_dir = Path(sys.executable).resolve().parent
+        if (exe_dir / "config.json").exists():
+            return exe_dir
         meipass = getattr(sys, "_MEIPASS", None)
         if meipass and (Path(meipass) / "config.json").exists():
             return Path(meipass)
-        return Path(sys.executable).resolve().parent
+        return exe_dir
     return Path(__file__).resolve().parent.parent
 
+def _code_from_exe_name() -> str:
+    """If the connector was downloaded as rmm-connector-<CODE>.exe, pull <CODE>
+    out of the filename so the guest gets a bound session with zero setup."""
+    try:
+        if getattr(sys, "frozen", False):
+            stem = Path(sys.executable).stem  # e.g. rmm-connector-01H3Y5
+            m = re.search(r"[-_]([A-Z0-9]{5,8})$", stem.upper())
+            if m:
+                return m.group(1)
+    except Exception:
+        pass
+    return ""
 
 DEFAULT_CONFIG_PATH = _base_dir() / "config.json"
 
@@ -83,7 +108,7 @@ class AgentConfig:
             server_url=str(data.get("server_url", cls.server_url)),
             token=str(data.get("token", cls.token)),
             enroll_secret=str(data.get("enroll_secret", cls.enroll_secret)),
-            support_code=str(data.get("support_code", cls.support_code)),
+            support_code=str(data.get("support_code", cls.support_code)) or _code_from_exe_name(),
             heartbeat_interval=float(data.get("heartbeat_interval", cls.heartbeat_interval)),
             frame_fps=float(data.get("frame_fps", cls.frame_fps)),
             frame_quality=int(data.get("frame_quality", cls.frame_quality)),

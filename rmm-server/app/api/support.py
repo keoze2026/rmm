@@ -88,14 +88,26 @@ async def create_support_session(
 async def list_support_sessions(
     db: AsyncSession = Depends(get_db),
     user: User = Depends(get_current_active_user),
-) -> list[SupportSession]:
+) -> list[SupportOut]:
+    from app.models.machine import Machine
     stmt = (
         select(SupportSession)
         .where(SupportSession.status != "ended")
         .order_by(SupportSession.created_at.desc())
     )
-    rows = await db.scalars(stmt)
-    return list(rows)
+    rows = list(await db.scalars(stmt))
+    out: list[SupportOut] = []
+    for s in rows:
+        status = s.status
+        if s.status == "joined":
+            m = await db.get(Machine, s.machine_id) if s.machine_id else None
+            if not m or not m.is_online:
+                status = "waiting"
+        out.append(SupportOut(
+            id=s.id, code=s.code, status=status, label=s.label,
+            machine_id=s.machine_id, joined_at=s.joined_at,
+        ))
+    return out
 
 
 @router.get("/resolve/{code}", response_model=ResolveOut)

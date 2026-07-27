@@ -1,13 +1,9 @@
 """Single-instance guard.
 
-On shared machines several people may be logged in at once (fast user
-switching). Each logged-in session would otherwise start its own agent, and
-two agents sharing one machine token would fight over the server connection.
-This lock ensures only ONE agent runs per machine: the first to start wins,
-later starts exit quietly.
-
-The lock file lives in a machine-wide directory so the lock is visible across
-user sessions (not per-user temp). Uses fcntl on POSIX and msvcrt on Windows.
+Only ONE agent runs per machine. First to start wins; later starts exit
+quietly. If a previous holder died without cleaning up (kill -9, crash,
+reboot), its lock is stale and the next start reclaims it instead of being
+blocked forever.
 """
 from __future__ import annotations
 
@@ -19,7 +15,6 @@ from pathlib import Path
 
 
 def machine_wide_dir() -> Path:
-    """A directory all users on the machine can reach, for lock + shared config."""
     if sys.platform.startswith("win"):
         base = Path(os.environ.get("ProgramData", r"C:\ProgramData")) / "RMAgent"
     elif sys.platform == "darwin":
@@ -30,8 +25,25 @@ def machine_wide_dir() -> Path:
         base.mkdir(parents=True, exist_ok=True)
         return base
     except OSError:
-        # Fall back to temp if we can't write the machine-wide path (e.g. dev).
         return Path(tempfile.gettempdir())
+
+
+def _pid_alive(pid: int) -> bool:
+    if pid <= 0:
+        return False
+    try:
+        if sys.platform.startswith("win"):
+            import ctypes
+            PROCESS_QUERY = 0x1000
+            h = ctypes.windll.kernel32.OpenProcess(PROCESS_QUERY, False, pid)
+            if not h:
+                return False
+            ctypes.windll.kernel32.CloseHandle(h)
+            return True
+        os.kill(pid, 0)
+        return True
+    except (OSError, ValueError):
+        return False
 
 
 class SingleInstance:
@@ -40,13 +52,20 @@ class SingleInstance:
         self._handle = None
 
     def acquire(self) -> bool:
-        """Return True if we got the lock, False if another agent holds it."""
+        # If a lock file exists but its PID is dead, remove it (stale).
+        try:
+            if self._path.exists():
+                txt = self._path.read_text(encoding="utf-8").strip()
+                pid = int(txt) if txt.isdigit() else -1
+                if not _pid_alive(pid):
+                    self._path.unlink(missing_ok=True)
+        except OSError:
+            pass
         try:
             if sys.platform.startswith("win"):
                 return self._acquire_windows()
             return self._acquire_posix()
         except OSError:
-            # If locking itself errors, don't block startup.
             return True
 
     def _acquire_posix(self) -> bool:
@@ -72,6 +91,10 @@ class SingleInstance:
             self._handle.close()
             self._handle = None
             return False
+        self._handle.seek(0)
+        self._handle.truncate()
+        self._handle.write(str(os.getpid()))
+        self._handle.flush()
         atexit.register(self.release)
         return True
 
@@ -79,7 +102,7 @@ class SingleInstance:
         if self._handle is None:
             return
         try:
-            if sys.platform.startswith("win"):  # pragma: no cover - Windows only
+            if sys.platform.startswith("win"):  # pragma: no cover
                 import msvcrt
                 self._handle.seek(0)
                 msvcrt.locking(self._handle.fileno(), msvcrt.LK_UNLCK, 1)
@@ -91,3 +114,7 @@ class SingleInstance:
         finally:
             self._handle.close()
             self._handle = None
+        try:
+            self._path.unlink(missing_ok=True)
+        except OSError:
+            pass

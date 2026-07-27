@@ -196,6 +196,7 @@ imports:
  &#8226;   <a href="#_weakrefset">_weakrefset</a>
  &#8226;   <a href="#abc">abc</a>
  &#8226;   <a href="#agent.main">agent.main</a>
+ &#8226;   <a href="#certifi">certifi</a>
  &#8226;   <a href="#codecs">codecs</a>
  &#8226;   <a href="#collections">collections</a>
  &#8226;   <a href="#copyreg">copyreg</a>
@@ -5499,6 +5500,7 @@ imported by:
  &#8226;   <a href="#_pyrepl.windows_console">_pyrepl.windows_console</a>
  &#8226;   <a href="#agent.config">agent.config</a>
  &#8226;   <a href="#agent.connection">agent.connection</a>
+ &#8226;   <a href="#agent.enroll">agent.enroll</a>
  &#8226;   <a href="#agent.files">agent.files</a>
  &#8226;   <a href="#agent.input_control">agent.input_control</a>
  &#8226;   <a href="#agent.inventory">agent.inventory</a>
@@ -7629,8 +7631,10 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#agent.config">agent.config</a>
+    <a href="#agent.autostart">agent.autostart</a>
+ &#8226;   <a href="#agent.config">agent.config</a>
  &#8226;   <a href="#agent.connection">agent.connection</a>
+ &#8226;   <a href="#agent.enroll">agent.enroll</a>
  &#8226;   <a href="#agent.files">agent.files</a>
  &#8226;   <a href="#agent.input_control">agent.input_control</a>
  &#8226;   <a href="#agent.inventory">agent.inventory</a>
@@ -7641,6 +7645,29 @@ imported by:
  &#8226;   <a href="#agent.session">agent.session</a>
  &#8226;   <a href="#agent.singleton">agent.singleton</a>
  &#8226;   <a href="#agent.terminal">agent.terminal</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="agent.autostart"></a>
+  <a target="code" href="/home/hans/Desktop/rmm/rmm-agent/agent/autostart.py" type="text/plain"><tt>agent.autostart</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#agent">agent</a>
+ &#8226;   <a href="#getpass">getpass</a>
+ &#8226;   <a href="#os">os</a>
+ &#8226;   <a href="#pathlib">pathlib</a>
+ &#8226;   <a href="#plistlib">plistlib</a>
+ &#8226;   <a href="#subprocess">subprocess</a>
+ &#8226;   <a href="#sys">sys</a>
+ &#8226;   <a href="#winreg">winreg</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#agent.main">agent.main</a>
 
   </div>
 
@@ -7658,6 +7685,7 @@ imports:
  &#8226;   <a href="#json">json</a>
  &#8226;   <a href="#os">os</a>
  &#8226;   <a href="#pathlib">pathlib</a>
+ &#8226;   <a href="#re">re</a>
  &#8226;   <a href="#sys">sys</a>
 
   </div>
@@ -7686,12 +7714,40 @@ imports:
  &#8226;   <a href="#agent.session">agent.session</a>
  &#8226;   <a href="#agent.terminal">agent.terminal</a>
  &#8226;   <a href="#asyncio">asyncio</a>
+ &#8226;   <a href="#certifi">certifi</a>
  &#8226;   <a href="#json">json</a>
  &#8226;   <a href="#logging">logging</a>
  &#8226;   <a href="#random">random</a>
  &#8226;   <a href="#ssl">ssl</a>
  &#8226;   <a href="#websockets">websockets</a>
  &#8226;   <a href="#websockets.exceptions">websockets.exceptions</a>
+
+  </div>
+  <div class="import">
+imported by:
+    <a href="#agent.main">agent.main</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="agent.enroll"></a>
+  <a target="code" href="/home/hans/Desktop/rmm/rmm-agent/agent/enroll.py" type="text/plain"><tt>agent.enroll</tt></a>
+<span class="moduletype">SourceModule</span>  <div class="import">
+imports:
+    <a href="#__future__">__future__</a>
+ &#8226;   <a href="#agent">agent</a>
+ &#8226;   <a href="#agent.singleton">agent.singleton</a>
+ &#8226;   <a href="#certifi">certifi</a>
+ &#8226;   <a href="#json">json</a>
+ &#8226;   <a href="#pathlib">pathlib</a>
+ &#8226;   <a href="#platform">platform</a>
+ &#8226;   <a href="#socket">socket</a>
+ &#8226;   <a href="#ssl">ssl</a>
+ &#8226;   <a href="#sys">sys</a>
+ &#8226;   <a href="#tempfile">tempfile</a>
+ &#8226;   <a href="#urllib.request">urllib.request</a>
 
   </div>
   <div class="import">
@@ -7772,8 +7828,10 @@ imported by:
 imports:
     <a href="#__future__">__future__</a>
  &#8226;   <a href="#agent">agent</a>
+ &#8226;   <a href="#agent.autostart">agent.autostart</a>
  &#8226;   <a href="#agent.config">agent.config</a>
  &#8226;   <a href="#agent.connection">agent.connection</a>
+ &#8226;   <a href="#agent.enroll">agent.enroll</a>
  &#8226;   <a href="#agent.presence">agent.presence</a>
  &#8226;   <a href="#agent.singleton">agent.singleton</a>
  &#8226;   <a href="#argparse">argparse</a>
@@ -7907,6 +7965,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#agent.config">agent.config</a>
+ &#8226;   <a href="#agent.enroll">agent.enroll</a>
  &#8226;   <a href="#agent.main">agent.main</a>
 
   </div>
@@ -9086,7 +9145,6 @@ imported by:
  &#8226;   <a href="#email.base64mime">email.base64mime</a>
  &#8226;   <a href="#email.encoders">email.encoders</a>
  &#8226;   <a href="#encodings.base64_codec">encodings.base64_codec</a>
- &#8226;   <a href="#http.cookies">http.cookies</a>
  &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#logging.handlers">logging.handlers</a>
  &#8226;   <a href="#pip._internal.operations.install.wheel">pip._internal.operations.install.wheel</a>
@@ -9240,6 +9298,19 @@ imported by:
  &#8226;   <a href="#pip._vendor.cachecontrol.heuristics">pip._vendor.cachecontrol.heuristics</a>
  &#8226;   <a href="#pip._vendor.requests.cookies">pip._vendor.requests.cookies</a>
  &#8226;   <a href="#ssl">ssl</a>
+
+  </div>
+
+</div>
+
+<div class="node">
+  <a name="certifi"></a>
+  <a target="code" href="" type="text/plain"><tt>certifi</tt></a>
+<span class="moduletype">MissingModule</span>  <div class="import">
+imported by:
+    <a href="#agent.connection">agent.connection</a>
+ &#8226;   <a href="#agent.enroll">agent.enroll</a>
+ &#8226;   <a href="#run_agent.py">run_agent.py</a>
 
   </div>
 
@@ -14695,7 +14766,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#agent.inventory">agent.inventory</a>
+    <a href="#agent.autostart">agent.autostart</a>
+ &#8226;   <a href="#agent.inventory">agent.inventory</a>
  &#8226;   <a href="#pip._internal.utils.misc">pip._internal.utils.misc</a>
  &#8226;   <a href="#pip._vendor.rich.console">pip._vendor.rich.console</a>
  &#8226;   <a href="#psutil.tests">psutil.tests</a>
@@ -15077,12 +15149,12 @@ imported by:
   <a target="code" href="/usr/lib/python3.13/http/cookies.py" type="text/plain"><tt>http.cookies</tt></a>
 <span class="moduletype">SourceModule</span>  <div class="import">
 imports:
-    <a href="#base64">base64</a>
- &#8226;   <a href="#http">http</a>
+    <a href="#http">http</a>
  &#8226;   <a href="#re">re</a>
  &#8226;   <a href="#string">string</a>
  &#8226;   <a href="#time">time</a>
  &#8226;   <a href="#types">types</a>
+ &#8226;   <a href="#urllib.parse">urllib.parse</a>
 
   </div>
   <div class="import">
@@ -16220,6 +16292,7 @@ imports:
 imported by:
     <a href="#agent.config">agent.config</a>
  &#8226;   <a href="#agent.connection">agent.connection</a>
+ &#8226;   <a href="#agent.enroll">agent.enroll</a>
  &#8226;   <a href="#importlib.metadata">importlib.metadata</a>
  &#8226;   <a href="#json.decoder">json.decoder</a>
  &#8226;   <a href="#json.encoder">json.encoder</a>
@@ -18142,6 +18215,7 @@ imported by:
  &#8226;   <a href="#_pyrepl.windows_console">_pyrepl.windows_console</a>
  &#8226;   <a href="#_sitebuiltins">_sitebuiltins</a>
  &#8226;   <a href="#_strptime">_strptime</a>
+ &#8226;   <a href="#agent.autostart">agent.autostart</a>
  &#8226;   <a href="#agent.config">agent.config</a>
  &#8226;   <a href="#agent.files">agent.files</a>
  &#8226;   <a href="#agent.inventory">agent.inventory</a>
@@ -18881,7 +18955,9 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#agent.config">agent.config</a>
+    <a href="#agent.autostart">agent.autostart</a>
+ &#8226;   <a href="#agent.config">agent.config</a>
+ &#8226;   <a href="#agent.enroll">agent.enroll</a>
  &#8226;   <a href="#agent.files">agent.files</a>
  &#8226;   <a href="#agent.main">agent.main</a>
  &#8226;   <a href="#agent.singleton">agent.singleton</a>
@@ -27159,6 +27235,7 @@ imports:
 imported by:
     <a href="#Xlib.support.unix_connect">Xlib.support.unix_connect</a>
  &#8226;   <a href="#_pyrepl.unix_console">_pyrepl.unix_console</a>
+ &#8226;   <a href="#agent.enroll">agent.enroll</a>
  &#8226;   <a href="#agent.inventory">agent.inventory</a>
  &#8226;   <a href="#evdev.uinput">evdev.uinput</a>
  &#8226;   <a href="#mss.darwin">mss.darwin</a>
@@ -27214,7 +27291,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#pip._vendor.pkg_resources">pip._vendor.pkg_resources</a>
+    <a href="#agent.autostart">agent.autostart</a>
+ &#8226;   <a href="#pip._vendor.pkg_resources">pip._vendor.pkg_resources</a>
 
   </div>
 
@@ -31960,6 +32038,7 @@ imported by:
  &#8226;   <a href="#_pyrepl.utils">_pyrepl.utils</a>
  &#8226;   <a href="#_sre">_sre</a>
  &#8226;   <a href="#_strptime">_strptime</a>
+ &#8226;   <a href="#agent.config">agent.config</a>
  &#8226;   <a href="#argparse">argparse</a>
  &#8226;   <a href="#ast">ast</a>
  &#8226;   <a href="#base64">base64</a>
@@ -36451,6 +36530,7 @@ imported by:
  &#8226;   <a href="#Xlib.support.unix_connect">Xlib.support.unix_connect</a>
  &#8226;   <a href="#Xlib.support.vms_connect">Xlib.support.vms_connect</a>
  &#8226;   <a href="#_ssl">_ssl</a>
+ &#8226;   <a href="#agent.enroll">agent.enroll</a>
  &#8226;   <a href="#agent.inventory">agent.inventory</a>
  &#8226;   <a href="#asyncio.base_events">asyncio.base_events</a>
  &#8226;   <a href="#asyncio.events">asyncio.events</a>
@@ -36621,6 +36701,7 @@ imports:
   <div class="import">
 imported by:
     <a href="#agent.connection">agent.connection</a>
+ &#8226;   <a href="#agent.enroll">agent.enroll</a>
  &#8226;   <a href="#asyncio.base_events">asyncio.base_events</a>
  &#8226;   <a href="#asyncio.selector_events">asyncio.selector_events</a>
  &#8226;   <a href="#asyncio.sslproto">asyncio.sslproto</a>
@@ -36887,6 +36968,7 @@ imported by:
  &#8226;   <a href="#PIL.JpegImagePlugin">PIL.JpegImagePlugin</a>
  &#8226;   <a href="#_aix_support">_aix_support</a>
  &#8226;   <a href="#_pyrepl.pager">_pyrepl.pager</a>
+ &#8226;   <a href="#agent.autostart">agent.autostart</a>
  &#8226;   <a href="#asyncio.base_events">asyncio.base_events</a>
  &#8226;   <a href="#asyncio.base_subprocess">asyncio.base_subprocess</a>
  &#8226;   <a href="#asyncio.events">asyncio.events</a>
@@ -37003,7 +37085,9 @@ imported by:
  &#8226;   <a href="#_pyrepl.simple_interact">_pyrepl.simple_interact</a>
  &#8226;   <a href="#_pyrepl.windows_console">_pyrepl.windows_console</a>
  &#8226;   <a href="#_sitebuiltins">_sitebuiltins</a>
+ &#8226;   <a href="#agent.autostart">agent.autostart</a>
  &#8226;   <a href="#agent.config">agent.config</a>
+ &#8226;   <a href="#agent.enroll">agent.enroll</a>
  &#8226;   <a href="#agent.main">agent.main</a>
  &#8226;   <a href="#agent.singleton">agent.singleton</a>
  &#8226;   <a href="#agent.terminal">agent.terminal</a>
@@ -37455,6 +37539,7 @@ imported by:
  &#8226;   <a href="#PIL.JpegImagePlugin">PIL.JpegImagePlugin</a>
  &#8226;   <a href="#_osx_support">_osx_support</a>
  &#8226;   <a href="#_pyrepl.pager">_pyrepl.pager</a>
+ &#8226;   <a href="#agent.enroll">agent.enroll</a>
  &#8226;   <a href="#agent.singleton">agent.singleton</a>
  &#8226;   <a href="#asyncio.windows_utils">asyncio.windows_utils</a>
  &#8226;   <a href="#ctypes.util">ctypes.util</a>
@@ -38980,6 +39065,7 @@ imported by:
     <a href="#email.utils">email.utils</a>
  &#8226;   <a href="#http.client">http.client</a>
  &#8226;   <a href="#http.cookiejar">http.cookiejar</a>
+ &#8226;   <a href="#http.cookies">http.cookies</a>
  &#8226;   <a href="#http.server">http.server</a>
  &#8226;   <a href="#logging.handlers">logging.handlers</a>
  &#8226;   <a href="#mimetypes">mimetypes</a>
@@ -39084,7 +39170,8 @@ imports:
   </div>
   <div class="import">
 imported by:
-    <a href="#http.cookiejar">http.cookiejar</a>
+    <a href="#agent.enroll">agent.enroll</a>
+ &#8226;   <a href="#http.cookiejar">http.cookiejar</a>
  &#8226;   <a href="#pip._internal.index.collector">pip._internal.index.collector</a>
  &#8226;   <a href="#pip._internal.utils.urls">pip._internal.utils.urls</a>
  &#8226;   <a href="#pip._internal.vcs.git">pip._internal.vcs.git</a>
@@ -41036,7 +41123,8 @@ imported by:
   <a target="code" href="" type="text/plain"><tt>winreg</tt></a>
 <span class="moduletype">MissingModule</span>  <div class="import">
 imported by:
-    <a href="#importlib._bootstrap_external">importlib._bootstrap_external</a>
+    <a href="#agent.autostart">agent.autostart</a>
+ &#8226;   <a href="#importlib._bootstrap_external">importlib._bootstrap_external</a>
  &#8226;   <a href="#mimetypes">mimetypes</a>
  &#8226;   <a href="#pip._vendor.platformdirs.windows">pip._vendor.platformdirs.windows</a>
  &#8226;   <a href="#pip._vendor.requests.utils">pip._vendor.requests.utils</a>

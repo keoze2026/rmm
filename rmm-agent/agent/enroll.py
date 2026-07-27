@@ -93,9 +93,28 @@ def auto_enroll(config) -> str:
     return token
 
 
+# def ensure_token(config) -> str:
+#     if config.token:
+#         return config.token
+#     cached = load_cached_token()
+#     if cached:
+#         return cached
+#     token = auto_enroll(config)
+#     save_cached_token(token)
+#     return token
+
 def ensure_token(config) -> str:
+    """Return a usable token: existing -> cached -> freshly enrolled.
+
+    A support-session connector (support_code set) always enrolls fresh: the
+    server binds machine->session during that enroll call, so reusing a cached
+    token would silently skip the bind. It also doesn't write to the shared
+    cache, so it can't clobber the always-on agent's identity.
+    """
     if config.token:
         return config.token
+    if getattr(config, "support_code", ""):
+        return auto_enroll(config)
     cached = load_cached_token()
     if cached:
         return cached

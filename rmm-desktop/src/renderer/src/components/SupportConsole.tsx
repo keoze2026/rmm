@@ -3,6 +3,8 @@ import {
   Headphones, Plus, RefreshCw, Search, Trash2, Edit2, LogIn,
   MoreHorizontal, User, Copy, Check
 } from 'lucide-react'
+import { RemoteViewer } from './RemoteViewer'
+import type { Machine } from '../types'
 
 type Sess = {
   id: string
@@ -10,6 +12,7 @@ type Sess = {
   link: string
   name: string
   status: string      // waiting | joined | ended
+  machine_id?: string | null
   host?: string
   user?: string
 }
@@ -23,6 +26,8 @@ export function SupportConsole({ base, token, email, onSignOut, wsState }:{
   const [query, setQuery] = useState('')
   const [invite, setInvite] = useState<'code' | 'link'>('code')
   const [copied, setCopied] = useState('')
+  const [viewing, setViewing] = useState<Machine | null>(null)
+  const [joinError, setJoinError] = useState('')
 
   const sel = sessions.find((s) => s.id === selected) || null
 
@@ -40,6 +45,7 @@ export function SupportConsole({ base, token, email, onSignOut, wsState }:{
             link: old?.link || `${api}/join/${x.code}`,
             name: x.label || x.name || `Session ${x.code}`,
             status: x.status,
+            machine_id: x.machine_id,
             host: x.host,
             user: x.user,
           }
@@ -73,6 +79,26 @@ export function SupportConsole({ base, token, email, onSignOut, wsState }:{
       setSessions((p) => p.filter((s) => s.id !== id))
       if (selected === id) setSelected(null)
     } catch {}
+  }
+
+  // Open the machine bound to this session in the remote viewer.
+  async function join(s: Sess | null) {
+    if (!s) return
+    setJoinError('')
+    if (!s.machine_id) {
+      setJoinError('No machine has joined this session yet.')
+      return
+    }
+    try {
+      const r = await fetch(`${api}/api/machines/${s.machine_id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!r.ok) { setJoinError('Could not load the joined machine.'); return }
+      const m: Machine = await r.json()
+      setViewing(m)
+    } catch {
+      setJoinError('Could not load the joined machine.')
+    }
   }
 
   function copy(text: string, which: string) {
@@ -125,7 +151,7 @@ export function SupportConsole({ base, token, email, onSignOut, wsState }:{
         <div className="flex items-center justify-between border-b border-line px-6 py-4">
           <h1 className="text-lg font-semibold text-fg">My Sessions</h1>
           <div className="flex items-center gap-1">
-            <button className="btn-ghost" onClick={() => sel && setSelected(sel.id)} title="Join"><LogIn className="h-4 w-4" /></button>
+            <button className="btn-ghost" onClick={() => join(sel)} title="Join"><LogIn className="h-4 w-4" /></button>
             <button className="btn-ghost" title="Edit"><Edit2 className="h-4 w-4" /></button>
             <button className="btn-ghost" onClick={() => sel && endSession(sel.id)} title="Delete"><Trash2 className="h-4 w-4" /></button>
             <button className="btn-ghost" title="More"><MoreHorizontal className="h-4 w-4" /></button>
@@ -155,11 +181,11 @@ export function SupportConsole({ base, token, email, onSignOut, wsState }:{
                   </div>
                   <div className="flex items-center gap-1">
                     <User className="h-4 w-4 text-faint" />
-                    <div className={`h-0.5 w-10 ${online ? 'bg-green-500' : 'bg-line'}`} />
-                    <User className={`h-4 w-4 ${online ? 'text-green-500' : 'text-faint'}`} />
+                    <div className={`h-0.5 w-10 ${online ? 'bg-online' : 'bg-line'}`} />
+                    <User className={`h-4 w-4 ${online ? 'text-online' : 'text-faint'}`} />
                   </div>
                 </div>
-                {online && <div className="mt-1 text-right text-xs text-green-600">Guest · connected</div>}
+                {online && <div className="mt-1 text-right text-xs text-online">Guest · connected</div>}
               </div>
             )
           })}
@@ -211,9 +237,16 @@ export function SupportConsole({ base, token, email, onSignOut, wsState }:{
               </div>
             )}
 
-            <button className="btn-primary w-full justify-center" onClick={refresh}>Join</button>
+            <button
+              className="btn-primary w-full justify-center disabled:opacity-50"
+              onClick={() => join(sel)}
+              disabled={sel.status !== 'joined'}
+            >
+              Join
+            </button>
+            {joinError && <div className="text-xs text-danger">{joinError}</div>}
 
-            <div className={`rounded-lg p-3 text-sm ${sel.status === 'joined' ? 'bg-green-50 text-green-700' : 'bg-sidebar text-dim'}`}>
+            <div className={`rounded-lg p-3 text-sm ${sel.status === 'joined' ? 'bg-online/10 text-online' : 'bg-sidebar text-dim'}`}>
               {sel.status === 'joined'
                 ? '✓ Your guest has connected. Click Join to launch control.'
                 : 'Waiting for your guest to connect…'}
@@ -225,6 +258,10 @@ export function SupportConsole({ base, token, email, onSignOut, wsState }:{
           </div>
         )}
       </aside>
+
+      {viewing && (
+        <RemoteViewer base={api} token={token} machine={viewing} onClose={() => setViewing(null)} />
+      )}
     </div>
   )
 }
