@@ -53,6 +53,9 @@ services:
       - "8765"
     volumes:
       - ./certs:/certs:ro
+      # Connector builds served per-session by /api/download/connector.
+      # Drop new binaries here; no image rebuild needed.
+      - ./rmm-server/web/download:/app/web/download:ro
     ports:
       - "8765:8765"
 

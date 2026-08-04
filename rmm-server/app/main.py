@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, enroll, machines, sessions, support
+from app.api import auth, download, enroll, machines, sessions, support
 from app.config import settings
 from app.database import close_db, init_db
 from app.reaper import offline_reaper
@@ -51,6 +51,7 @@ app.include_router(machines.router)
 app.include_router(sessions.router)
 app.include_router(support.router)
 app.include_router(enroll.router)
+app.include_router(download.router)
 # WebSocket routers
 app.include_router(handlers.router)
 

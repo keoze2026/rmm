@@ -78,20 +78,47 @@
   }
   const ident = getIdentifier();
   const API = location.origin;
-  const DL = API + '/download';
-  document.getElementById('dl-win').href   = DL + '/rmm-connector-windows.exe';
-  document.getElementById('dl-mac').href   = DL + '/rmm-connector-mac.zip';
-  document.getElementById('dl-linux').href = DL + '/rmm-connector-linux';
+  const OS_BUTTONS = { windows: 'dl-win', mac: 'dl-mac', linux: 'dl-linux' };
+
+  // The session code travels in the connector's FILENAME, so every download has
+  // to be per-session. Until the code resolves there is nothing useful to hand
+  // out, so the buttons stay inert rather than serving an unbound connector.
+  function setDownloadLinks(code){
+    for (const os in OS_BUTTONS){
+      const el = document.getElementById(OS_BUTTONS[os]);
+      if (!el) continue;
+      if (code){
+        el.href = API + '/api/download/connector?code=' + encodeURIComponent(code)
+                      + '&os=' + encodeURIComponent(os);
+        el.removeAttribute('aria-disabled');
+        el.style.opacity = '';
+        el.style.pointerEvents = '';
+      } else {
+        el.removeAttribute('href');
+        el.setAttribute('aria-disabled', 'true');
+        el.style.opacity = '.5';
+        el.style.pointerEvents = 'none';
+      }
+    }
+  }
+  setDownloadLinks(null);
+
   async function loadSession(){
-    if (!ident){ document.getElementById('code').textContent = '—'; return; }
+    if (!ident){
+      document.getElementById('code').textContent = '—';
+      setDownloadLinks(null);
+      return;
+    }
     try{
       const r = await fetch(API + '/api/support/resolve/' + encodeURIComponent(ident));
       if (!r.ok) throw new Error('not found');
       const d = await r.json();
       document.getElementById('code').textContent = d.code;
+      setDownloadLinks(d.code);
       updateStatus(d.status);
     }catch(e){
       document.getElementById('code').textContent = 'Invalid';
+      setDownloadLinks(null);
       document.getElementById('status-text').textContent = 'This session link is invalid or has ended.';
     }
   }

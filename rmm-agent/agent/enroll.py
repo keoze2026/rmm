@@ -90,6 +90,11 @@ def auto_enroll(config) -> str:
     token = data.get("agent_token")
     if not token:
         raise RuntimeError("server did not return a token")
+    if code and not data.get("support_bound"):
+        # Enrollment succeeded but the machine was NOT attached to the session,
+        # so it will show up under Machines and nowhere under that code.
+        print(f"[agent] warning: support code {code!r} matched no open session; "
+              "this machine will not appear under that session.", file=sys.stderr)
     return token
 
 

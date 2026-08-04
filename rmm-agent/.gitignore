@@ -10,7 +10,13 @@ venv/
 # PyInstaller
 build/*.spec.bak
 dist/
+# PyInstaller work dirs — build/ itself holds the tracked build_*.md notes.
+build/*/
 *.spec
+# …except the build specs themselves — CI runs `pyinstaller rmm-agent.spec`,
+# so an ignored spec is a build that can't be reproduced.
+!rmm-agent.spec
+!rmm-connector-windows.spec
 
 # OS
 .DS_Store
