@@ -19,7 +19,7 @@ from app.models.user import User
 
 router = APIRouter(prefix="/api/support", tags=["support"])
 
-PUBLIC_BASE = getattr(settings, "public_base_url", "https://rmm.remotedesk247.com")
+PUBLIC_BASE = settings.PUBLIC_BASE_URL
 
 _CODE_ALPHABET = string.ascii_uppercase + string.digits
 _AMBIG = {"O": "0", "I": "1", "L": "1"}

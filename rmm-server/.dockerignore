@@ -1,0 +1,7 @@
+# Connector binaries are bind-mounted at runtime (see docker-compose.yml), not
+# baked into the image — they're ~90 MB and change independently of the server.
+web/download/
+
+__pycache__/
+*.pyc
+.venv/

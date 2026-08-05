@@ -1,6 +1,11 @@
 """Application configuration loaded from environment variables."""
 from functools import lru_cache
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# rmm-server/ — app/config.py -> app/ -> rmm-server/
+_SERVER_ROOT = Path(__file__).resolve().parents[1]
 
 
 class Settings(BaseSettings):
@@ -52,6 +57,17 @@ class Settings(BaseSettings):
     # --- Heartbeat ---
     # Seconds without a heartbeat before an agent is considered offline.
     AGENT_OFFLINE_AFTER: int = 30
+
+    # --- Public URLs ---
+    # Base the shareable /join/<token> link is built from, and the wss:// URL
+    # handed back by /api/support/resolve. Must be the host guests can reach.
+    PUBLIC_BASE_URL: str = "https://rmm.remotedesk247.com"
+
+    # --- Connector downloads ---
+    # Where the prebuilt connector binaries live, served per-session by
+    # /api/download/connector. Same path in the container (Dockerfile copies
+    # web/) and on a bare checkout.
+    DOWNLOAD_DIR: str = str(_SERVER_ROOT / "web" / "download")
 
 
 @lru_cache

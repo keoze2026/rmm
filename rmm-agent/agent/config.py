@@ -29,15 +29,48 @@ def _base_dir() -> Path:
         return exe_dir
     return Path(__file__).resolve().parent.parent
 
+# Double underscore is a sentinel: it never appears in a platform suffix or a
+# product name, so only a filename the download route built can match.
+_EXE_CODE_RE = re.compile(r"__([A-Z0-9]{4,12})$")
+# Browsers append " (1)", " (2)", … when the same file is downloaded twice.
+_DUP_SUFFIX_RE = re.compile(r"\s*\(\d+\)$")
+
+
+def _match_code(stem: str) -> str:
+    """Pull a support code out of one filename stem, or return ""."""
+    cleaned = _DUP_SUFFIX_RE.sub("", stem.upper()).strip()
+    m = _EXE_CODE_RE.search(cleaned)
+    return m.group(1) if m else ""
+
+
 def _code_from_exe_name() -> str:
-    """If the connector was downloaded as rmm-connector-<CODE>.exe, pull <CODE>
-    out of the filename so the guest gets a bound session with zero setup."""
+    """If the connector was downloaded as rmm-connector__<CODE>.exe, pull <CODE>
+    out of the filename so the guest gets a bound session with zero setup.
+
+    The separator is deliberately ``__``. A single dash matched the platform
+    suffix as well: ``rmm-connector-windows`` yielded "WINDOWS" and the
+    always-on ``rmm-agent`` yielded "AGENT", so every endpoint enrolled with a
+    bogus code — which the server silently failed to bind, and which also sent
+    the agent down the never-cache-a-token path in ``enroll.ensure_token``.
+
+    Two carriers, same convention:
+      * the executable itself   — rmm-connector__RG6092[.exe]  (Windows/Linux)
+      * the enclosing .app name — Remote Support Agent__RG6092.app  (macOS,
+        where the executable inside the bundle always keeps its build name).
+        The bundle *name* is used rather than a file dropped inside Contents/,
+        which would invalidate the ad-hoc code signature and stop the app
+        launching at all on Apple Silicon.
+    """
     try:
-        if getattr(sys, "frozen", False):
-            stem = Path(sys.executable).stem  # e.g. rmm-connector-01H3Y5
-            m = re.search(r"[-_]([A-Z0-9]{5,8})$", stem.upper())
-            if m:
-                return m.group(1)
+        if not getattr(sys, "frozen", False):
+            return ""
+        exe = Path(sys.executable)
+        code = _match_code(exe.stem)
+        if code:
+            return code
+        for parent in exe.parents:
+            if parent.suffix.lower() == ".app":
+                return _match_code(parent.stem)
     except Exception:
         pass
     return ""

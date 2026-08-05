@@ -11,6 +11,9 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt greenlet
 
 COPY app ./app
+# Connector binaries served per-session by /api/download/connector.
+# Optional: the route 404s cleanly if a platform build isn't present.
+COPY web ./web
 
 EXPOSE 8765
 
