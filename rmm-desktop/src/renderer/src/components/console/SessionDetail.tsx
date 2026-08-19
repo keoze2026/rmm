@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Contact,
   Crosshair,
@@ -50,6 +50,8 @@ interface Props {
   token: string
   tab: TabKey
   onTab: (t: TabKey) => void
+  /** Bumped by the Edit button to put the cursor in the Name field. */
+  editNonce: number
   onRename: (id: string, name: string) => void
   onJoin: () => void
   joinError: string | null
@@ -62,12 +64,21 @@ export function SessionDetail({
   token,
   tab,
   onTab,
+  editNonce,
   onRename,
   onJoin,
   joinError
 }: Props) {
   const [invite, setInvite] = useState<'code' | 'link'>('code')
   const [copied, setCopied] = useState('')
+  const nameRef = useRef<HTMLInputElement>(null)
+
+  // Edit means "name this session" — select the text so typing replaces it.
+  useEffect(() => {
+    if (!editNonce) return
+    nameRef.current?.focus()
+    nameRef.current?.select()
+  }, [editNonce])
 
   if (!session) {
     return (
@@ -125,6 +136,7 @@ export function SessionDetail({
               <label className="mb-1.5 block text-[13px] text-fg">Name:</label>
               <div className="relative mb-7">
                 <input
+                  ref={nameRef}
                   value={session.name}
                   onChange={(e) => onRename(session.id, e.target.value)}
                   className="w-full rounded border border-line bg-surface px-3 py-2 pr-9 text-[14px] text-fg focus:border-signal focus:outline-none"

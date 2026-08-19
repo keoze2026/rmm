@@ -1,6 +1,27 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { normalizeBase } from './api'
 
+// Session names live in this console, not on the server: support_sessions has
+// a `label` column but no route to set it. Keeping them here means a name you
+// type survives restarts without any server change.
+const NAMES_KEY = 'rmm.sessionNames'
+
+function loadNames(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(NAMES_KEY) || '{}') as Record<string, string>
+  } catch {
+    return {}
+  }
+}
+
+function saveNames(names: Record<string, string>): void {
+  try {
+    localStorage.setItem(NAMES_KEY, JSON.stringify(names))
+  } catch {
+    /* storage full or disabled — the name just won't outlive this run */
+  }
+}
+
 /** A support session as the console shows it. Mirrors the server's SupportOut. */
 export interface SupportSessionRow {
   id: string
@@ -35,7 +56,7 @@ export function useSupportSessions(base: string, token: string): UseSupportSessi
   const [sessions, setSessions] = useState<SupportSessionRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const namesRef = useRef<Record<string, string>>({})
+  const namesRef = useRef<Record<string, string>>(loadNames())
   const linksRef = useRef<Record<string, string>>({})
 
   const refresh = useCallback(async () => {
@@ -125,6 +146,7 @@ export function useSupportSessions(base: string, token: string): UseSupportSessi
 
   const rename = useCallback((id: string, name: string) => {
     namesRef.current[id] = name
+    saveNames(namesRef.current)
     setSessions((p) => p.map((s) => (s.id === id ? { ...s, name } : s)))
   }, [])
 

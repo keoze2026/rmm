@@ -27,6 +27,7 @@ export function Console() {
   const [query, setQuery] = useState('')
   const [tab, setTab] = useState<TabKey>('session')
   const [creating, setCreating] = useState(false)
+  const [editNonce, setEditNonce] = useState(0)
   const [viewing, setViewing] = useState<Machine | null>(null)
   const [joinError, setJoinError] = useState<string | null>(null)
 
@@ -128,7 +129,10 @@ export function Console() {
         onToggleAll={toggleAll}
         onQuery={setQuery}
         onJoin={handleJoin}
-        onEdit={() => setTab('session')}
+        onEdit={() => {
+          setTab('session')
+          setEditNonce((n) => n + 1)
+        }}
         onDelete={handleDelete}
         onMore={() => setTab('info')}
       />
@@ -140,6 +144,7 @@ export function Console() {
         token={token}
         tab={tab}
         onTab={setTab}
+        editNonce={editNonce}
         onRename={rename}
         onJoin={handleJoin}
         joinError={joinError}
