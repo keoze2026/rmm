@@ -102,3 +102,11 @@ export async function listSessions(
   if (!res.ok) throw new ApiError(res.status, await readError(res))
   return res.json()
 }
+/** Fetch a single machine (used by the console to open a joined guest). */
+export async function getMachine(base: string, token: string, id: string): Promise<Machine> {
+  const res = await fetch(`${normalizeBase(base)}/api/machines/${id}`, {
+    headers: authHeaders(token)
+  })
+  if (!res.ok) throw new ApiError(res.status, await readError(res))
+  return res.json()
+}

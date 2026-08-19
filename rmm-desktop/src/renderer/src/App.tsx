@@ -1,6 +1,6 @@
 import { useAuth } from './auth'
 import { Login } from './pages/Login'
-import { Dashboard } from './pages/Dashboard'
+import { Console } from './pages/Console'
 
 export default function App() {
   const { session, ready } = useAuth()
@@ -11,5 +11,5 @@ export default function App() {
     )
   }
 
-  return session ? <Dashboard /> : <Login />
+  return session ? <Console /> : <Login />
 }
