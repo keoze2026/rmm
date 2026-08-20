@@ -11,10 +11,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import uuid
 from datetime import datetime, timezone
 
 from fastapi import WebSocket
+
+log = logging.getLogger("app.ws.manager")
 
 from app.redis_client import (
     ADMIN_CHANNEL,
@@ -113,7 +116,7 @@ class ConnectionManager:
         dead: list[str] = []
         payload = json.dumps(message)
         target_machine = message.get("machine_id")
-        for conn_id, ws in self._admins.items():
+        for conn_id, ws in list(self._admins.items()):
             # Frame messages only go to admins subscribed to that machine.
             if message.get("type") == "frame" and target_machine is not None:
                 if target_machine not in self._admin_subscriptions.get(conn_id, set()):
@@ -127,22 +130,38 @@ class ConnectionManager:
 
     # --- redis listeners ---------------------------------------------------
     async def _listen_admin_channel(self) -> None:
-        pubsub = redis_client.pubsub()
-        await pubsub.subscribe(ADMIN_CHANNEL)
-        try:
-            async for msg in pubsub.listen():
-                if msg.get("type") != "message":
-                    continue
+        """Fan events out to local admins, and stay subscribed.
+
+        This task used to die on the first unexpected error and nothing ever
+        resubscribed, so admin fan-out stayed dead for the life of the process:
+        agents kept working and sessions kept being recorded, while every frame
+        was published to a channel with zero subscribers. Now it resubscribes.
+        """
+        backoff = 1.0
+        while True:
+            pubsub = redis_client.pubsub()
+            try:
+                await pubsub.subscribe(ADMIN_CHANNEL)
+                backoff = 1.0
+                async for msg in pubsub.listen():
+                    if msg.get("type") != "message":
+                        continue
+                    try:
+                        data = json.loads(msg["data"])
+                    except (ValueError, TypeError):
+                        continue
+                    await self._deliver_to_local_admins(data)
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                log.exception("admin fan-out failed; resubscribing in %.0fs", backoff)
+                await asyncio.sleep(backoff)
+                backoff = min(30.0, backoff * 2)
+            finally:
                 try:
-                    data = json.loads(msg["data"])
-                except (ValueError, TypeError):
-                    continue
-                await self._deliver_to_local_admins(data)
-        except asyncio.CancelledError:
-            pass
-        finally:
-            await pubsub.unsubscribe(ADMIN_CHANNEL)
-            await pubsub.aclose()
+                    await pubsub.aclose()
+                except Exception:
+                    pass
 
     async def _listen_agent_channel(self, machine_id: str) -> None:
         pubsub = redis_client.pubsub()
