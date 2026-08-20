@@ -62,7 +62,7 @@ export function SessionList({
   const hasSelection = selectedId !== null
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col border-r border-line bg-surface">
+    <section className="flex w-[420px] min-w-0 flex-shrink-0 flex-col border-r border-line bg-surface">
       {/* Header + toolbar */}
       <div className="flex h-[68px] items-center justify-between px-6">
         <h2 className="text-[19px] font-normal text-fg">My Sessions</h2>

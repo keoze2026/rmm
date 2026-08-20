@@ -17,6 +17,7 @@ import {
 import type { Machine } from '../../types'
 import type { SupportSessionRow } from '../../useSupportSessions'
 import { HistoryPanel, InfoPanel, LogsPanel, RemoteToolPanel, Unavailable } from './DetailPanels'
+import { ScreenPreview } from './ScreenPreview'
 
 export type TabKey =
   | 'session'
@@ -55,6 +56,8 @@ interface Props {
   onRename: (id: string, name: string) => void
   onJoin: () => void
   joinError: string | null
+  /** False while the full viewer is open, so only one session runs at a time. */
+  showPreview: boolean
 }
 
 export function SessionDetail({
@@ -67,7 +70,8 @@ export function SessionDetail({
   editNonce,
   onRename,
   onJoin,
-  joinError
+  joinError,
+  showPreview
 }: Props) {
   const [invite, setInvite] = useState<'code' | 'link'>('code')
   const [copied, setCopied] = useState('')
@@ -82,7 +86,7 @@ export function SessionDetail({
 
   if (!session) {
     return (
-      <aside className="flex w-[640px] flex-shrink-0 items-center justify-center border-l border-line bg-surface px-10 text-center text-[13px] text-dim">
+      <aside className="flex min-w-0 flex-1 items-center justify-center border-l border-line bg-surface px-10 text-center text-[13px] text-dim">
         Select a session, or click Create to start a new one.
       </aside>
     )
@@ -100,7 +104,7 @@ export function SessionDetail({
   }
 
   return (
-    <aside className="flex w-[640px] flex-shrink-0 border-l border-line bg-surface">
+    <aside className="flex min-w-0 flex-1 border-l border-line bg-surface">
       {/* Vertical tab rail */}
       <div className="flex w-[46px] flex-shrink-0 flex-col items-center border-r border-line bg-ink pt-[68px]">
         {TABS.map((t) => {
@@ -231,6 +235,15 @@ export function SessionDetail({
                     : 'Once you and your guest join the session, you can control their screen. Click Join to launch the host client.'}
                 </p>
               </div>
+
+              {joined && showPreview && session.machine_id && (
+                <ScreenPreview
+                  base={base}
+                  token={token}
+                  machineId={session.machine_id}
+                  onOpen={onJoin}
+                />
+              )}
             </div>
           )}
 

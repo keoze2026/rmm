@@ -148,6 +148,7 @@ export function Console() {
         onRename={rename}
         onJoin={handleJoin}
         joinError={joinError}
+        showPreview={viewing === null}
       />
 
       {error && (
