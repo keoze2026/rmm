@@ -35,6 +35,8 @@ export function useRemoteSession(
   const wsRef = useRef<WebSocket | null>(null)
   const decodingRef = useRef(false)
   const pendingB64Ref = useRef<string | null>(null)
+  const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const liveRef = useRef(false)
   const onFrameRef = useRef(onFrame)
   onFrameRef.current = onFrame
   const onMessageRef = useRef(onMessage)
@@ -86,20 +88,37 @@ export function useRemoteSession(
   useEffect(() => {
     setStatus('connecting')
     setError(null)
+    liveRef.current = false
     const ws = new WebSocket(adminWsUrl(base, token))
     wsRef.current = ws
+
+    const stopMsg = JSON.stringify({
+      type: 'command',
+      machine_id: machineId,
+      action: 'session_stop'
+    })
+    const startMsg = JSON.stringify({
+      type: 'command',
+      machine_id: machineId,
+      action: 'session_start',
+      payload: { kind: 'control' }
+    })
 
     ws.onopen = () => {
       setStatus('starting')
       ws.send(JSON.stringify({ type: 'subscribe', machine_id: machineId }))
-      ws.send(
-        JSON.stringify({
-          type: 'command',
-          machine_id: machineId,
-          action: 'session_start',
-          payload: { kind: 'control' }
-        })
-      )
+      // The agent's start_session() returns early when a session is already
+      // active and never re-emits session_started, so a session left behind by
+      // an untidy disconnect would leave us stuck on 'starting' forever. Clear
+      // first, then start.
+      ws.send(stopMsg)
+      ws.send(startMsg)
+      // If session_started still hasn't landed, clear and start once more.
+      retryRef.current = setTimeout(() => {
+        if (ws.readyState !== WebSocket.OPEN) return
+        ws.send(stopMsg)
+        ws.send(startMsg)
+      }, 3500)
     }
 
     ws.onmessage = (ev) => {
@@ -116,9 +135,15 @@ export function useRemoteSession(
           void decode(msg.data as string)
           break
         case 'agent_event':
-          if (msg.event === 'session_started') setStatus('live')
-          else if (msg.event === 'session_ended') setStatus('ended')
-          else if (msg.event === 'session_error') {
+          if (msg.event === 'session_started') {
+            liveRef.current = true
+            if (retryRef.current) clearTimeout(retryRef.current)
+            setStatus('live')
+          } else if (msg.event === 'session_ended') {
+            // The session_ended from our own pre-start cleanup must not be
+            // mistaken for the session we are in the middle of opening.
+            if (liveRef.current) setStatus('ended')
+          } else if (msg.event === 'session_error') {
             setStatus('error')
             setError((msg.reason as string) || 'The agent could not start the session.')
           }
@@ -149,6 +174,7 @@ export function useRemoteSession(
     }
 
     return () => {
+      if (retryRef.current) clearTimeout(retryRef.current)
       // Best-effort stop on unmount.
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'command', machine_id: machineId, action: 'session_stop' }))

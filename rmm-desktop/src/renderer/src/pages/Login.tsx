@@ -12,9 +12,13 @@ const DESKTOP_FALLBACK_SERVER = 'https://rmm.remotedesk247.com'
  * there's no Server field to fill in any more.
  */
 function resolveServer(): string {
-  if (typeof window !== 'undefined' && window.location.protocol.startsWith('http')) {
-    return window.location.origin
-  }
+  if (typeof window === 'undefined') return DESKTOP_FALLBACK_SERVER
+  const { protocol, hostname, origin } = window.location
+  // Deployed: the API is on this same origin (nginx proxies /api).
+  // Running locally (vite dev on localhost, or Electron on file://) there is
+  // no API here, so talk to the deployed server instead.
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
+  if (protocol.startsWith('http') && !isLocal) return origin
   return DESKTOP_FALLBACK_SERVER
 }
 

@@ -256,7 +256,7 @@ export function RemoteViewer({ base, token, machine, onClose }: Props) {
             onWheel={onWheel}
             onContextMenu={(e) => e.preventDefault()}
             className="max-h-full max-w-full object-contain"
-            style={{ cursor: control ? 'crosshair' : 'default', imageRendering: 'auto' }}
+            style={{ cursor: 'default', imageRendering: 'auto' }}
           />
           {status !== 'live' && (
             <div className="absolute inset-0 flex items-center justify-center">
