@@ -2,11 +2,24 @@ import { useState } from 'react'
 import { Radio } from 'lucide-react'
 import { useAuth } from '../auth'
 
-const DEFAULT_SERVER = 'http://localhost:8765'
+// Used only by the desktop build, which loads from file:// and so has no
+// origin to infer the server from. The web build ignores this.
+const DESKTOP_FALLBACK_SERVER = 'https://rmm.remotedesk247.com'
+
+/**
+ * Where the API lives. Served over http(s) — the web console — the API is on
+ * the same origin, because nginx proxies /api to the FastAPI app. That's why
+ * there's no Server field to fill in any more.
+ */
+function resolveServer(): string {
+  if (typeof window !== 'undefined' && window.location.protocol.startsWith('http')) {
+    return window.location.origin
+  }
+  return DESKTOP_FALLBACK_SERVER
+}
 
 export function Login() {
   const { signIn } = useAuth()
-  const [base, setBase] = useState(DEFAULT_SERVER)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
@@ -16,7 +29,7 @@ export function Login() {
     setBusy(true)
     setError(null)
     try {
-      await signIn(base, email, password)
+      await signIn(resolveServer(), email, password)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sign in failed')
     } finally {
@@ -38,17 +51,6 @@ export function Login() {
         </div>
 
         <div className="card p-5">
-          <label className="label" htmlFor="server">
-            Server
-          </label>
-          <input
-            id="server"
-            className="field mb-4 font-mono text-xs"
-            value={base}
-            onChange={(e) => setBase(e.target.value)}
-            placeholder="http://localhost:8765"
-          />
-
           <label className="label" htmlFor="email">
             Email
           </label>
@@ -59,6 +61,7 @@ export function Login() {
             autoComplete="username"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submit()}
             placeholder="you@example.com"
           />
 
@@ -81,7 +84,7 @@ export function Login() {
           <button
             className="btn-primary mt-5 w-full"
             onClick={submit}
-            disabled={busy || !email || !password || !base}
+            disabled={busy || !email || !password}
           >
             {busy ? 'Signing in…' : 'Sign in'}
           </button>
