@@ -5,7 +5,87 @@ Newest entry first. Times are EAT (UTC+3).
 
 ---
 
-## 2026-08-21 — Tray icon fixed; Linux agent rebuilt; speed tuning
+## 2026-08-21 — Tray icon fixed on all three platforms; agents shipped
+
+### The tray icon was never a drawing problem
+
+Linux showed a coloured box no matter what was drawn — a dot on a square, a
+monitor glyph, arcs on a tile, arcs on transparency. Four different images,
+same box.
+
+Cause: `pystray` was falling back to `pystray._xorg`, which paints a flat
+rectangle by design. PyGObject was not bundled, so the AppIndicator backend
+could not load. Proven with:
+
+```
+backend module: pystray._xorg     <- the flat-rectangle fallback
+build venv: no 'gi'               <- AppIndicator cannot load
+system python: ayatana OK         <- the machine supports it
+```
+
+### Fix
+
+- `presence.py` — prefers AppIndicator/GTK on Linux before pystray chooses;
+  Linux-only and guarded by `sys.platform`.
+- `rmm-agent.spec` — bundles `gi` on Linux only. Icon-only change.
+- Icon itself — the product's broadcast mark: white arcs on transparency with
+  a small status dot (green online, blue in-session, amber connecting, grey
+  offline). Drawn, not a bundled asset: a one-file PyInstaller build has no
+  dependable asset path at runtime.
+
+Windows and macOS needed no change — their native backends render the image
+directly, which is why only Linux was broken.
+
+Commit `e6b1b2a`, tag `agent-v2.3.0`.
+
+### Shipped
+
+| Platform | Built | Deployed | Verified |
+|---|---|---|---|
+| Linux | locally, then CI (33 MB) | yes | **icon confirmed working in tray** |
+| Windows | CI | yes — `rmm-connector-windows.exe` | pending test |
+| Mac | CI | yes — `rmm-connector-mac.zip` | pending test |
+
+### Shipping a connector, start to finish
+
+```bash
+# laptop — download the three artifacts from the Actions run first
+cd ~/Downloads
+unzip -o rmm-agent-windows.zip -d win
+unzip -o rmm-agent-mac.zip -d mac
+
+# mac: GitHub's artifact zip strips the exec bit, so restore it before re-zipping
+chmod +x "mac/Remote Support Agent.app/Contents/MacOS/rmm-agent" mac/rmm-agent
+cd mac && zip -ry ../rmm-connector-mac.zip "Remote Support Agent.app" rmm-agent config.json && cd ..
+
+scp win/rmm-connector-windows.exe root@rmm.remotedesk247.com:/var/www/rmm/download/rmm-connector-windows.exe
+scp rmm-connector-mac.zip        root@rmm.remotedesk247.com:/var/www/rmm/download/rmm-connector-mac.zip
+scp <linux binary>               root@rmm.remotedesk247.com:/var/www/rmm/download/rmm-connector-linux
+```
+
+```bash
+# server
+chmod +x /var/www/rmm/download/rmm-connector-linux
+```
+
+Testing on a machine that already runs an agent: **kill the old one first** or
+the singleton lock makes the new binary exit silently.
+
+```bash
+pkill -f rmm-connector; pkill -f rmm-agent
+```
+
+### Open
+
+- Linux connector built locally was 213 MB (`--system-site-packages` pulled in
+  the whole system). The CI build is 33 MB — use CI's. Local builds are for
+  testing only.
+- Remote-control lag: still on the default 1600px / quality 60 / 8 fps. The
+  two-key fix in `download.py` is written up in the entry below.
+
+---
+
+## 2026-08-21 — Earlier: Linux agent rebuilt; speed tuning
 
 ### Tray icon — fixed
 
