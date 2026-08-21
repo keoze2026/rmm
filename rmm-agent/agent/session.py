@@ -21,14 +21,6 @@ from agent.input_control import InputInjector
 
 log = logging.getLogger("agent.session")
 
-
-def _grab_tiles(grabber, keyframe: bool):
-    """Tile capture with a full-frame fallback if anything goes wrong."""
-    try:
-        return grabber.grab_tiles(keyframe=keyframe)
-    except Exception:
-        return grabber.grab()
-
 SendFn = Callable[[dict], Awaitable[None]]
 
 
@@ -175,11 +167,8 @@ class SessionManager:
             while self.active and self._grabber is not None:
                 tick = loop.time()
                 try:
-                    # A keyframe every few seconds repairs any tile that went
-                    # missing; everything between sends only what changed.
-                    want_key = (self._seq % max(1, int(self.config.frame_fps * 5))) == 0
                     encoded = await loop.run_in_executor(
-                        self._capture_pool, _grab_tiles, self._grabber, want_key
+                        self._capture_pool, self._grabber.grab
                     )
                 except Exception as exc:
                     log.error("frame grab failed: %s", exc)
@@ -187,22 +176,10 @@ class SessionManager:
                     continue
 
                 self._seq += 1
-                if isinstance(encoded, dict):
-                    # Tile frame: skip sending entirely when nothing moved.
-                    if not encoded["tiles"]:
-                        elapsed = loop.time() - tick
-                        await asyncio.sleep(max(0.0, interval - elapsed))
-                        continue
-                    await self.send(protocol.frame_tiles(
-                        encoded["tiles"], encoded["width"], encoded["height"],
-                        monitor=self.config.monitor_index, seq=self._seq,
-                        keyframe=encoded["keyframe"],
-                    ))
-                else:
-                    await self.send(protocol.frame(
-                        encoded.data_b64, encoded.width, encoded.height,
-                        monitor=self.config.monitor_index, seq=self._seq,
-                    ))
+                await self.send(protocol.frame(
+                    encoded.data_b64, encoded.width, encoded.height,
+                    monitor=self.config.monitor_index, seq=self._seq,
+                ))
 
                 elapsed = loop.time() - tick
                 await asyncio.sleep(max(0.0, interval - elapsed))

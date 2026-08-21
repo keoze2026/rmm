@@ -83,7 +83,6 @@ class ScreenGrabber:
         self.max_width = max_width
         self._sct = None
         self._geometry: tuple[int, int] | None = None
-        self._prev = None   # previous frame, for tile diffing
 
     def start(self) -> None:
         import mss  # imported lazily; needs a display, real machines only
@@ -122,56 +121,6 @@ class ScreenGrabber:
         mon = mons[idx]
         self._geometry = (mon["width"], mon["height"])
         return self._geometry
-
-    def grab_tiles(self, *, cols: int = 8, rows: int = 6, keyframe: bool = False) -> dict:
-        """Grab a frame and encode only the tiles that changed.
-
-        A desktop at rest changes almost nothing between frames, so this sends
-        a fraction of the bytes a full JPEG costs. Returns a dict with the
-        changed tiles and the frame geometry; an empty tile list means nothing
-        moved and there is nothing to send.
-        """
-        if self._sct is None:
-            raise RuntimeError("ScreenGrabber.start() must be called first")
-        import io as _io
-        import base64 as _b64
-        from PIL import Image
-
-        mons = self._sct.monitors
-        idx = self.monitor_index if self.monitor_index < len(mons) else 0
-        shot = self._sct.grab(mons[idx])
-        img = Image.frombytes("RGB", shot.size, shot.bgra, "raw", "BGRX")
-
-        if self.max_width and img.size[0] > self.max_width:
-            scale = self.max_width / float(img.size[0])
-            img = img.resize((self.max_width, max(1, int(img.size[1] * scale))), Image.BILINEAR)
-
-        w, h = img.size
-        prev = self._prev
-        if prev is None or prev.size != img.size:
-            keyframe = True
-
-        tile_w = max(1, w // cols)
-        tile_h = max(1, h // rows)
-        tiles = []
-        for ty in range(rows):
-            for tx in range(cols):
-                x0, y0 = tx * tile_w, ty * tile_h
-                x1 = w if tx == cols - 1 else x0 + tile_w
-                y1 = h if ty == rows - 1 else y0 + tile_h
-                box = (x0, y0, x1, y1)
-                cur = img.crop(box)
-                if not keyframe and prev.crop(box).tobytes() == cur.tobytes():
-                    continue
-                buf = _io.BytesIO()
-                cur.save(buf, format="JPEG", quality=int(self.quality), optimize=False)
-                tiles.append({
-                    "x": x0, "y": y0, "w": x1 - x0, "h": y1 - y0,
-                    "data": _b64.b64encode(buf.getvalue()).decode("ascii"),
-                })
-
-        self._prev = img
-        return {"tiles": tiles, "width": w, "height": h, "keyframe": keyframe}
 
     def close(self) -> None:
         if self._sct is not None:

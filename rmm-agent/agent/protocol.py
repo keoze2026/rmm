@@ -103,21 +103,3 @@ def file_chunk(transfer_id: str, seq: int, total: int, data_b64: str, *, eof: bo
         "data": data_b64,
         "eof": eof,
     }
-
-def frame_tiles(tiles: list, width: int, height: int, *, monitor: int = 1,
-                seq: int = 0, keyframe: bool = False) -> dict:
-    """A frame sent as changed tiles only.
-
-    Deliberately reuses type "frame" so the server relays it unchanged — it
-    forwards a fixed set of message types, and a new one would be dropped.
-    Consumers tell the two apart by the presence of "tiles".
-    """
-    return {
-        "type": FRAME,
-        "tiles": tiles,
-        "width": width,
-        "height": height,
-        "monitor": monitor,
-        "seq": seq,
-        "keyframe": keyframe,
-    }

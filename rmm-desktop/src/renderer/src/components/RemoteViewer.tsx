@@ -74,9 +74,6 @@ export function RemoteViewer({ base, token, machine, onClose }: Props) {
   annotatingRef.current = annotating
   const overlayRef = useRef<HTMLCanvasElement | null>(null)
   const drawingRef = useRef(false)
-  const [fileStatus, setFileStatus] = useState<string>('')
-  const [stats, setStats] = useState<{ fps: number; kbps: number }>({ fps: 0, kbps: 0 })
-  const statRef = useRef({ frames: 0, bytes: 0 })
   const [monitors, setMonitors] = useState<Array<Record<string, number>>>([])
   const [currentMonitor, setCurrentMonitor] = useState<number | null>(null)
   const [showMonitors, setShowMonitors] = useState(false)
@@ -222,18 +219,8 @@ export function RemoteViewer({ base, token, machine, onClose }: Props) {
 
   useEffect(() => {
     return subscribe((m) => {
-      if (m.type === 'frame') {
-        statRef.current.frames += 1
-        statRef.current.bytes += Math.floor(String(m.data ?? '').length * 0.75)
-      }
       if (m.type === 'agent_event') {
-        if (m.event === 'fs_write_done') {
-          setFileStatus(`Sent to guest: ${String(m.path ?? '')}`)
-          setTimeout(() => setFileStatus(''), 6000)
-        } else if (m.event === 'fs_error') {
-          setFileStatus(`File error: ${String(m.reason ?? 'failed')}`)
-          setTimeout(() => setFileStatus(''), 8000)
-        } else if (m.event === 'monitors') {
+        if (m.event === 'monitors') {
           setMonitors((m.monitors as Array<Record<string, number>>) ?? [])
           setCurrentMonitor((m.current as number) ?? null)
         } else if (m.event === 'monitor_selected' && m.ok) {
@@ -263,16 +250,6 @@ export function RemoteViewer({ base, token, machine, onClose }: Props) {
       }
     })
   }, [subscribe])
-
-  // Live throughput readout: turns "it feels slow" into numbers.
-  useEffect(() => {
-    const t = setInterval(() => {
-      const { frames, bytes } = statRef.current
-      statRef.current = { frames: 0, bytes: 0 }
-      setStats({ fps: frames, kbps: Math.round((bytes * 8) / 1000) })
-    }, 1000)
-    return () => clearInterval(t)
-  }, [])
 
   // Keep the annotation layer matched to its box.
   useEffect(() => {
@@ -354,9 +331,7 @@ export function RemoteViewer({ base, token, machine, onClose }: Props) {
     async (file: File) => {
       const CHUNK = 192 * 1024 // keep each message well under the 16MB cap
       const buf = new Uint8Array(await file.arrayBuffer())
-      // Land on the guest's desktop so they can see it arrive.
-      const path = `~/Desktop/${file.name}`
-      setFileStatus(`Sending ${file.name}…`)
+      const path = `~/${file.name}`
       let first = true
       for (let off = 0; off < buf.length || first; off += CHUNK) {
         const slice = buf.subarray(off, off + CHUNK)
@@ -402,12 +377,6 @@ export function RemoteViewer({ base, token, machine, onClose }: Props) {
           <span className="text-sm font-semibold text-fg">{machine.name}</span>
           <StatusPill status={status} />
           {error && <span className="text-xs text-warn">{error}</span>}
-          {fileStatus && <span className="text-xs text-signal">{fileStatus}</span>}
-          {status === 'live' && (
-            <span className="font-mono text-xs text-dim">
-              {stats.fps} fps · {stats.kbps > 1000 ? `${(stats.kbps / 1000).toFixed(1)} Mbps` : `${stats.kbps} kbps`}
-            </span>
-          )}
         </div>
         <div className="flex items-center gap-2">
           <button

@@ -75,9 +75,6 @@ export function SessionDetail({
 }: Props) {
   const [invite, setInvite] = useState<'code' | 'link'>('code')
   const [copied, setCopied] = useState('')
-  // Opt-in: the preview holds its own session, so leaving it on by default
-  // made it compete with the viewer for the guest's upload bandwidth.
-  const [previewOn, setPreviewOn] = useState(false)
   const nameRef = useRef<HTMLInputElement>(null)
 
   // Edit means "name this session" — select the text so typing replaces it.
@@ -239,16 +236,7 @@ export function SessionDetail({
                 </p>
               </div>
 
-              {joined && showPreview && session.machine_id && !previewOn && (
-                <button
-                  onClick={() => setPreviewOn(true)}
-                  className="mt-6 w-full rounded border border-line py-2 text-[13px] text-dim hover:text-fg"
-                >
-                  Show guest screen preview
-                </button>
-              )}
-
-              {joined && showPreview && session.machine_id && previewOn && (
+              {joined && showPreview && session.machine_id && (
                 <ScreenPreview
                   base={base}
                   token={token}

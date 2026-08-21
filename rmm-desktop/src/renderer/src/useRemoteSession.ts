@@ -34,8 +34,6 @@ export function useRemoteSession(
   const [error, setError] = useState<string | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const decodingRef = useRef(false)
-  const surfaceRef = useRef<HTMLCanvasElement | null>(null)
-  const tileBusyRef = useRef(false)
   const pendingB64Ref = useRef<string | null>(null)
   const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const liveRef = useRef(false)
@@ -65,43 +63,6 @@ export function useRemoteSession(
       const next = pendingB64Ref.current
       pendingB64Ref.current = null
       if (next) void decode(next)
-    }
-  }, [])
-
-  // Tile frames carry only the parts of the screen that changed. They are
-  // painted onto a persistent surface here, and the composited result is handed
-  // to onFrame — so every consumer keeps receiving whole frames and needs no
-  // change. Full-frame messages still take the path above.
-  const decodeTiles = useCallback(async (msg: Record<string, unknown>) => {
-    if (tileBusyRef.current) return
-    tileBusyRef.current = true
-    try {
-      const w = Number(msg.width) || 0
-      const h = Number(msg.height) || 0
-      let surface = surfaceRef.current
-      if (!surface) {
-        surface = document.createElement('canvas')
-        surfaceRef.current = surface
-      }
-      if (surface.width !== w || surface.height !== h) {
-        surface.width = w
-        surface.height = h
-      }
-      const ctx = surface.getContext('2d')
-      if (!ctx) return
-      for (const raw of (msg.tiles as Array<Record<string, unknown>>) ?? []) {
-        const bin = atob(String(raw.data ?? ''))
-        const bytes = new Uint8Array(bin.length)
-        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
-        const bmp = await createImageBitmap(new Blob([bytes], { type: 'image/jpeg' }))
-        ctx.drawImage(bmp, Number(raw.x) || 0, Number(raw.y) || 0)
-        bmp.close()
-      }
-      onFrameRef.current(await createImageBitmap(surface))
-    } catch {
-      // a bad tile batch just leaves the previous pixels in place
-    } finally {
-      tileBusyRef.current = false
     }
   }, [])
 
@@ -171,8 +132,7 @@ export function useRemoteSession(
 
       switch (msg.type) {
         case 'frame':
-          if (msg.tiles) void decodeTiles(msg)
-          else void decode(msg.data as string)
+          void decode(msg.data as string)
           break
         case 'agent_event':
           if (msg.event === 'session_started') {
@@ -226,7 +186,7 @@ export function useRemoteSession(
       }
       ws.close()
     }
-  }, [base, token, machineId, decode, decodeTiles])
+  }, [base, token, machineId, decode])
 
   return { status, error, sendInput, sendCommand: sendInput, stop }
 }
