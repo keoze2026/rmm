@@ -22,6 +22,11 @@ for pkg in ("PIL", "mss", "plyer", "websockets", "psutil"):
 _add("pynput")
 _add("pystray")
 
+# Linux tray icon: without PyGObject bundled, pystray falls back to its X11
+# backend, which paints a flat rectangle instead of the icon. Icon-only.
+if sys.platform.startswith("linux"):
+    _add("gi")
+
 if sys.platform.startswith("win"):
     hiddenimports += ["mss.windows", "pynput.keyboard._win32", "pynput.mouse._win32", "pystray._win32"]
 elif sys.platform == "darwin":

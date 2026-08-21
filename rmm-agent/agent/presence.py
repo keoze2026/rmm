@@ -11,6 +11,8 @@ the tray icon is present.
 from __future__ import annotations
 
 import logging
+import os
+import sys
 import threading
 
 log = logging.getLogger("agent.presence")
@@ -60,29 +62,40 @@ class TrayPresence(Presence):
         self._detail = ""
 
     def _make_image(self, status: str):
-        """Solid, high-contrast tray icon.
+        """The broadcast mark as a real tray icon.
 
-        Drawn rather than loaded from a bundled asset on purpose: a one-file
-        PyInstaller build has no dependable asset path at runtime, and pystray
-        takes a PIL image directly on Windows, macOS and Linux alike. The old
-        version put a small dot on a dark square, which trays downscaled into
-        a faded box.
+        A shape on transparency, not a filled tile: trays render at 16-22px,
+        where a full-bleed square reads as a coloured box and thin strokes
+        disappear entirely. The glyph fills the canvas with strokes heavy
+        enough to survive that downscale, outlined in dark so it stays legible
+        on light tray backgrounds as well as dark ones.
+
+        Drawn rather than bundled: a one-file PyInstaller build has no
+        dependable asset path at runtime, and pystray takes a PIL image
+        directly on Windows, macOS and Linux alike.
         """
         from PIL import Image, ImageDraw
 
-        color = _STATUS_COLORS.get(status, _STATUS_COLORS["offline"]) + (255,)
         white = (255, 255, 255, 255)
+        edge = (17, 24, 39, 190)          # dark halo for light-coloured trays
+        color = _STATUS_COLORS.get(status, _STATUS_COLORS["offline"]) + (255,)
+
         size = 128
         img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
 
-        # Full-bleed rounded square: still legible when a tray shrinks it to 16px.
-        d.rounded_rectangle((3, 3, size - 3, size - 3), radius=28, fill=color)
+        # Three concentric arcs + dot, spanning nearly the whole canvas.
+        arcs = ((4, 10, 124, 130), (26, 32, 102, 108), (48, 54, 80, 86))
+        for box in arcs:                      # dark halo first
+            d.arc(box, start=200, end=340, fill=edge, width=26)
+        d.ellipse((50, 86, 78, 114), fill=edge)
+        for box in arcs:                      # white glyph on top
+            d.arc(box, start=200, end=340, fill=white, width=18)
+        d.ellipse((54, 90, 74, 110), fill=white)
 
-        # White screen-and-stand glyph.
-        d.rounded_rectangle((28, 32, size - 28, size - 48), radius=10, outline=white, width=9)
-        d.rectangle((size // 2 - 5, size - 50, size // 2 + 5, size - 34), fill=white)
-        d.rounded_rectangle((42, size - 36, size - 42, size - 27), radius=4, fill=white)
+        # Status dot, bottom-right, ringed so it reads on any background.
+        d.ellipse((84, 84, 126, 126), fill=edge)
+        d.ellipse((88, 88, 122, 122), fill=color)
         return img
 
     def _menu(self):
@@ -93,6 +106,18 @@ class TrayPresence(Presence):
         )
 
     def start(self) -> None:
+        # Prefer AppIndicator/StatusNotifier on Linux. Without this pystray can
+        # fall back to its X11 backend, which paints a flat rectangle instead
+        # of the icon — the "coloured box" in the tray.
+        if sys.platform.startswith("linux") and not os.environ.get("PYSTRAY_BACKEND"):
+            for backend in ("appindicator", "gtk", "ayatana-appindicator"):
+                try:
+                    __import__(f"pystray._{backend.replace('-', '_')}")
+                    os.environ["PYSTRAY_BACKEND"] = backend
+                    break
+                except Exception:
+                    continue
+
         try:
             import pystray  # noqa: F401
         except Exception as exc:  # pragma: no cover - depends on platform
