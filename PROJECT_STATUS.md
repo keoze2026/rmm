@@ -5,6 +5,68 @@ Newest entry first. Times are EAT (UTC+3).
 
 ---
 
+## 2026-08-21 — Remote control was slow: fixed by streaming only what changed
+
+### Measured, not guessed
+
+Added a live fps/bandwidth readout to the viewer. It showed **2 fps at
+930 kbps** — about 58 KB per frame, on a guest uplink that tops out near
+1 Mbps. Lowering quality three times barely helped, because the problem was
+never quality.
+
+### Cause
+
+The agent sent a **full JPEG of the entire screen, every frame**, base64
+wrapped (+33%). A desktop sitting still cost exactly as much as one playing
+video. Commercial tools do not work this way — they send only the parts of the
+screen that changed.
+
+### Fix
+
+- `screen.py` — `grab_tiles()`: splits the frame into an 8x6 grid, compares
+  each tile with the previous frame, encodes only the ones that differ.
+- `session.py` — streams tiles, sends a full keyframe every 5s to repair
+  anything missed, and sends **nothing at all** when no tile changed.
+- `protocol.py` — `frame_tiles()`. Reuses `type: "frame"` deliberately: the
+  server relays a fixed set of message types and a new one would be dropped,
+  so **the server needed no change**. Consumers tell them apart by `tiles`.
+- `useRemoteSession.ts` — paints tiles onto a persistent surface and hands the
+  composited result to `onFrame`, so the viewer and thumbnail are unchanged.
+- Old connectors keep sending full frames and still render.
+
+Also: the detail-panel thumbnail is now **opt-in**. It held its own session and
+competed with the viewer for the same uplink whenever a session was selected.
+
+Commit `558df07`, tag `agent-v2.4.0`.
+
+### Expected result
+
+On a still or lightly-changing desktop, roughly 10-20 fps at the same
+bandwidth, and quality can go back up.
+
+### Deployed
+
+| Piece | State |
+|---|---|
+| Console (`index-DceKpZ9-.js`) | live |
+| Windows connector | shipped |
+| Mac connector | shipped |
+| Linux connector | shipped, `chmod +x` done |
+
+Guests must download a **fresh** connector — the old one keeps sending full
+frames, and frame settings bake in at download time.
+
+### Also fixed today
+
+- File transfer had no feedback at all; the viewer now shows "Sent to guest" or
+  the actual error. Files land on the guest's **Desktop**.
+- Windows connector produced a zip-inside-a-zip, which separated `config.json`
+  from the exe, so the support code fell back to the filename and enrolled as
+  `AGENT` with `bound=false`. Fixed by pointing `_BINARIES["windows"]` at the
+  `.exe` rather than a `.zip`.
+
+---
+
 ## 2026-08-21 — Tray icon fixed on all three platforms; agents shipped
 
 ### The tray icon was never a drawing problem
