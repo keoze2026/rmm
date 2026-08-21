@@ -5,6 +5,76 @@ Newest entry first. Times are EAT (UTC+3).
 
 ---
 
+## 2026-08-21 — Tray icon fixed; Linux agent rebuilt; speed tuning
+
+### Tray icon — fixed
+
+`presence.py` drew a 32px coloured dot on a 64px dark square. Trays downscaled
+that into a faded box on Linux and showed nothing usable on Windows/macOS.
+There was never an icon asset — it was always drawn.
+
+Now: a full-bleed rounded square in the status colour with a white screen
+glyph, 128px, still legible at 16–22px. Green online, blue in-session, amber
+connecting, grey offline.
+
+Drawn rather than bundled on purpose — a one-file PyInstaller build has no
+dependable asset path at runtime, and pystray accepts a PIL image directly on
+all three platforms. **No spec change, no new dependency.**
+
+Commit `841c1a8`, tagged `agent-v2.2.0`.
+
+### Builds
+
+| Platform | State |
+|---|---|
+| Linux | **Built locally** → `/tmp/rmm-connector-linux` (22 MB). Has the tray icon *and* the monitor switcher. |
+| Windows | Needs GitHub Actions — PyInstaller only builds for the OS it runs on |
+| Mac | Needs GitHub Actions |
+
+Trigger Windows/Mac: `git push origin main && git push origin agent-v2.2.0`
+
+### Deploying a connector
+
+```bash
+# laptop
+scp /tmp/rmm-connector-linux root@vmi3333575:/var/www/rmm/download/rmm-connector-linux
+# server
+chmod +x /var/www/rmm/download/rmm-connector-linux
+```
+
+Testing on a machine that already runs an agent: **kill the old one first** or
+the singleton lock makes the new binary exit silently.
+
+```bash
+pkill -f rmm-connector; pkill -f rmm-agent
+```
+
+### Remote control lag — cause and fix
+
+Not the console. Mouse moves are already throttled to one per animation frame.
+The agent streams **1600px-wide JPEG at quality 60, base64, 8 fps** — roughly
+2 MB/s over India → Germany → Kenya.
+
+Fix without rebuilding anything: `download.py` writes the connector's
+`config.json` at download time, so adding two keys to that dict applies to
+every new connector.
+
+```python
+        "frame_max_width": 1280,
+        "frame_quality": 45,
+```
+
+Then `docker compose up -d --build rmm-server` — drops live WebSockets, so run
+it with no session active. Roughly halves the payload.
+
+### Console features — live and confirmed
+
+Screenshot, zoom in/out, annotate, send file to guest, get file from guest.
+All five working in the deployed console. Monitor switcher is built but needs
+the new agent on each endpoint.
+
+---
+
 ## 2026-08-20 — Six viewer features requested; five added, one skipped
 
 Strictly additive. Existing behaviour verified unchanged afterwards.
