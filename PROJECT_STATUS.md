@@ -5,6 +5,63 @@ Newest entry first. Times are EAT (UTC+3).
 
 ---
 
+## 2026-08-20 — Six viewer features requested; five added, one skipped
+
+Strictly additive. Existing behaviour verified unchanged afterwards.
+
+### Added
+
+| Feature | How | Agent change |
+|---|---|---|
+| Screenshot | `canvas.toBlob()` → downloads `<machine>-<timestamp>.png` | none |
+| Zoom in / out / reset | CSS transform on the frame canvas; `scale(1)` by default | none |
+| Annotate | Separate overlay canvas above the frame, red pen + clear. Admin-side only — pointer events are off unless the pen is on, so the remote input path is untouched when idle | none |
+| Send file to guest | File picker → chunked `fs_write` (192 KB chunks), lands in the guest's home folder | none — uses the existing action |
+| Get file from guest | `fs_read` → assembles the returned `file_chunk`s and saves | none — uses the existing action |
+| Monitor switcher | New `monitors_list` / `monitor_select` actions; agent replies on the existing `agent_event` envelope | **new** |
+
+### Skipped, deliberately
+
+**Blank the guest's screen** — needs a fullscreen always-on-top black window on
+the guest. `tkinter` is excluded in the PyInstaller spec and `pystray`/`PIL`
+cannot make one, so it would need a new dependency and a spec change. Both are
+off limits. Mirroring annotations onto the guest hits the same wall, so
+annotation stayed admin-side.
+
+### What changed, and what deliberately did not
+
+Added to: `protocol.py` (2 constants), `screen.py` (`list_monitors()`,
+`ScreenGrabber.set_monitor()`), `session.py` (`current_monitor`,
+`list_monitors()`, `switch_monitor()`), `connection.py` (`_MONITOR_ACTIONS`,
+`_handle_monitors()`, one dispatch branch beside the existing input/term/fs
+ones), `RemoteViewer.tsx` (toolbar buttons, handlers, overlay canvas).
+
+**`rmm-server/` needed no change at all.** `_handle_admin_message` already
+forwards any action verbatim and `_handle_agent_message` already relays any
+`agent_event`, so the new messages pass through untouched. New `mtype` values
+would have been dropped, which is why the replies ride `agent_event`.
+
+Untouched and hash-verified after the work: `enroll.py`, `config.py`,
+`singleton.py`, `presence.py`, `rmm-agent.spec`, `requirements.txt`,
+`ws/handlers.py`, `ws/manager.py`, `build-agent.yml`.
+
+### Verification
+
+- `tests_e2e.py`: **ALL AGENT TESTS PASSED** — connect, hello, 25 heartbeats,
+  12 frames, session start/stop, input applied, reconnect after drop.
+- Protected files: `md5sum -c` → all 9 **OK**.
+- Source diff is additive: 4 removed lines total, each an import or set
+  re-added extended in place. No logic replaced.
+- Console typecheck and build clean → `index-swc_3zeu.js`.
+
+### Known limitation
+
+The `monitor` field in each frame still reports `config.monitor_index`, not the
+switched display — `_stream_loop` is existing code and was left alone. The
+console tracks the selection itself, so nothing depends on it.
+
+---
+
 ## 2026-08-20 — Remote screen never rendered ("Starting session…" forever) — FIXED, VERIFIED LIVE
 
 ### The bug

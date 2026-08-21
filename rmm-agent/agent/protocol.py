@@ -54,6 +54,11 @@ ACTION_FS_LIST = "fs_list"
 ACTION_FS_READ = "fs_read"
 ACTION_FS_WRITE = "fs_write"
 
+# Monitor selection. Additive: every action above is unchanged, and these ride
+# the same command envelope, so the server relays them without any change.
+ACTION_MONITORS_LIST = "monitors_list"
+ACTION_MONITOR_SELECT = "monitor_select"
+
 
 def _now_iso() -> str:
     return _dt.datetime.now(_dt.timezone.utc).isoformat()

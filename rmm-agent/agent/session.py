@@ -16,7 +16,7 @@ from typing import Awaitable, Callable
 from agent import protocol
 from agent.config import AgentConfig
 from agent.presence import Presence
-from agent.screen import ScreenGrabber
+from agent.screen import ScreenGrabber, list_monitors as _list_monitors
 from agent.input_control import InputInjector
 
 log = logging.getLogger("agent.session")
@@ -120,6 +120,36 @@ class SessionManager:
     async def shutdown(self) -> None:
         await self.stop_session(notify=False)
         self._capture_pool.shutdown(wait=False)
+
+    # --- monitors (additive) ------------------------------------------------
+    @property
+    def current_monitor(self) -> int:
+        """Which display an active session is capturing."""
+        if self._grabber is not None:
+            return self._grabber.monitor_index
+        return self.config.monitor_index
+
+    async def list_monitors(self) -> list[dict]:
+        """Enumerate the guest's displays. Works with or without a session."""
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(self._capture_pool, _list_monitors)
+
+    async def switch_monitor(self, index: int) -> tuple[int, int] | None:
+        """Point an active session at another display.
+
+        Returns the new (width, height), or None if no session is streaming.
+        Capture keeps running throughout — grab() re-reads the monitor index
+        each frame, so the stream simply continues on the new display.
+        """
+        grabber = self._grabber
+        if not self.active or grabber is None:
+            return None
+        loop = asyncio.get_running_loop()
+        size = await loop.run_in_executor(self._capture_pool, grabber.set_monitor, index)
+        if size and self._injector is not None:
+            # Keep pointer scaling correct for the new display geometry.
+            self._injector.set_screen_size(size)
+        return size
 
     # --- input -------------------------------------------------------------
     async def apply_input(self, action: str, payload: dict) -> None:

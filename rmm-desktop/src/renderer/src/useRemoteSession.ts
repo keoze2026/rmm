@@ -165,11 +165,15 @@ export function useRemoteSession(
     }
 
     ws.onerror = () => {
+      // A socket we've already replaced (StrictMode double-mounts effects in
+      // dev, and its aborted first socket errors after the real one is up).
+      if (wsRef.current !== ws) return
       setStatus('error')
       setError('Connection error. Check the server and try again.')
     }
 
     ws.onclose = () => {
+      if (wsRef.current !== ws) return
       setStatus((s) => (s === 'error' ? s : 'ended'))
     }
 

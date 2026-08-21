@@ -46,6 +46,29 @@ def encode_frame(image, *, quality: int = 60, max_width: int = 1600) -> EncodedF
     return EncodedFrame(data_b64=data, width=w, height=h)
 
 
+def list_monitors() -> list[dict]:
+    """Describe the displays mss can see. New function; nothing else uses it.
+
+    Index 0 is mss's virtual "all monitors" rectangle; 1 is the primary. Opens
+    its own short-lived mss instance so a live capture session is untouched.
+    """
+    import mss
+
+    with mss.mss() as sct:
+        return [
+            {
+                "index": i,
+                "width": mon["width"],
+                "height": mon["height"],
+                "left": mon["left"],
+                "top": mon["top"],
+                "all": i == 0,
+                "primary": i == 1,
+            }
+            for i, mon in enumerate(sct.monitors)
+        ]
+
+
 class ScreenGrabber:
     """Thin wrapper over mss that yields encoded frames for one monitor.
 
@@ -82,6 +105,22 @@ class ScreenGrabber:
         shot = self._sct.grab(mons[idx])
         img = Image.frombytes("RGB", shot.size, shot.bgra, "raw", "BGRX")
         return encode_frame(img, quality=self.quality, max_width=self.max_width)
+
+    def set_monitor(self, index: int) -> tuple[int, int] | None:
+        """Point an open grabber at another display.
+
+        New method. grab() already re-reads self.monitor_index on every frame,
+        so switching needs nothing more than updating it — no restart, and no
+        change to start()/grab()/close().
+        """
+        if self._sct is None:
+            return None
+        mons = self._sct.monitors
+        idx = index if 0 <= index < len(mons) else 0
+        self.monitor_index = idx
+        mon = mons[idx]
+        self._geometry = (mon["width"], mon["height"])
+        return self._geometry
 
     def close(self) -> None:
         if self._sct is not None:

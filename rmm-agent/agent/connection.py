@@ -196,7 +196,44 @@ class AgentConnection:
                 await self._handle_files(action, payload)
             return
 
+        # Monitor selection. Additive branch: it sits alongside the input,
+        # terminal and file branches above, none of which are altered.
+        if action in _MONITOR_ACTIONS:
+            await self._handle_monitors(action, payload)
+            return
+
         log.debug("ignoring unknown action: %s", action)
+
+    # --- monitors (additive) -----------------------------------------------
+    async def _handle_monitors(self, action: str, payload: dict) -> None:
+        """Report the guest's displays, and switch which one is streamed.
+
+        Replies ride the existing `agent_event` envelope, so the server relays
+        them with no change on its side.
+        """
+        if action == protocol.ACTION_MONITORS_LIST:
+            try:
+                monitors = await self._session.list_monitors()
+            except Exception as exc:
+                await self._send(protocol.agent_event("monitors_error", reason=str(exc)))
+                return
+            await self._send(protocol.agent_event(
+                "monitors", monitors=monitors, current=self._session.current_monitor))
+            return
+
+        if action == protocol.ACTION_MONITOR_SELECT:
+            try:
+                index = int(payload.get("index", 1))
+            except (TypeError, ValueError):
+                index = 1
+            size = await self._session.switch_monitor(index)
+            await self._send(protocol.agent_event(
+                "monitor_selected",
+                index=self._session.current_monitor,
+                ok=size is not None,
+                width=size[0] if size else None,
+                height=size[1] if size else None,
+            ))
 
     # --- terminal ----------------------------------------------------------
     async def _handle_terminal(self, action: str, payload: dict) -> None:
@@ -277,3 +314,4 @@ _TERM_ACTIONS = {
     protocol.ACTION_TERM_RESIZE, protocol.ACTION_TERM_STOP,
 }
 _FS_ACTIONS = {protocol.ACTION_FS_LIST, protocol.ACTION_FS_READ, protocol.ACTION_FS_WRITE}
+_MONITOR_ACTIONS = {protocol.ACTION_MONITORS_LIST, protocol.ACTION_MONITOR_SELECT}
