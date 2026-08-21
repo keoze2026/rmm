@@ -60,11 +60,29 @@ class TrayPresence(Presence):
         self._detail = ""
 
     def _make_image(self, status: str):
+        """Solid, high-contrast tray icon.
+
+        Drawn rather than loaded from a bundled asset on purpose: a one-file
+        PyInstaller build has no dependable asset path at runtime, and pystray
+        takes a PIL image directly on Windows, macOS and Linux alike. The old
+        version put a small dot on a dark square, which trays downscaled into
+        a faded box.
+        """
         from PIL import Image, ImageDraw
-        color = _STATUS_COLORS.get(status, _STATUS_COLORS["offline"])
-        img = Image.new("RGB", (64, 64), (28, 28, 30))
+
+        color = _STATUS_COLORS.get(status, _STATUS_COLORS["offline"]) + (255,)
+        white = (255, 255, 255, 255)
+        size = 128
+        img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
         d = ImageDraw.Draw(img)
-        d.ellipse((16, 16, 48, 48), fill=color)
+
+        # Full-bleed rounded square: still legible when a tray shrinks it to 16px.
+        d.rounded_rectangle((3, 3, size - 3, size - 3), radius=28, fill=color)
+
+        # White screen-and-stand glyph.
+        d.rounded_rectangle((28, 32, size - 28, size - 48), radius=10, outline=white, width=9)
+        d.rectangle((size // 2 - 5, size - 50, size // 2 + 5, size - 34), fill=white)
+        d.rounded_rectangle((42, size - 36, size - 42, size - 27), radius=4, fill=white)
         return img
 
     def _menu(self):
