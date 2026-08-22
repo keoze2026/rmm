@@ -1,5 +1,36 @@
 # RMM — Project Status
 
+## Fast diagnosis
+
+Symptom first. Each row has the **one command that confirms it**, so you are
+never guessing. Server = Contabo (`root@vmi3333575`), laptop = your machine.
+
+| Symptom | Likely cause | Confirm with | Fix |
+|---|---|---|---|
+| Screen black, status says **Live** | Console bundle is older than the connector (e.g. connector sends tiles, console can't paint them) | `curl -s https://rmm.remotedesk247.com \| grep -o 'index-[A-Za-z0-9_-]*\.js'` — compare to `rmm-desktop/web-dist/index.html` | Redeploy the console from the **laptop** |
+| Stuck on **"Starting session…"**, screen black, terminal/files also dead | Admin fan-out listener died — everything published to a channel with no subscriber | **SERVER:** `docker compose exec rmm-redis redis-cli publish rmm:admin_events '{"type":"test"}'` → must print **1**, not 0 | Fixed in `ws/manager.py` (resubscribe loop). If it recurs, restart `rmm-server` |
+| Agent seems connected but ignores commands | Agent replies but nothing reaches the browser | **SERVER:** `... psql -c "select event,created_at from activity_logs order by created_at desc limit 10;"` — `session.start` rows mean the agent **is** answering | Fan-out, as above |
+| Connector enrols but session never goes green | `config.json` wasn't beside the exe, so the code fell back to the filename | **SERVER:** `... psql -c "select detail->>'support_code' code, detail->>'support_bound' bound from activity_logs where event='machine.enrolled' order by created_at desc limit 5;"` — `AGENT`/`WINDOWS` + `false` is the tell | Run the connector from the unzipped folder, not `RemoteSupportAgent-Setup.exe`. Check `_BINARIES` points at `.exe`, not `.zip` (a `.zip` there makes a zip-inside-a-zip) |
+| Download button returns `{"detail":"Not Found"}` | Join page URL doesn't match the route prefix | **SERVER:** `docker exec rmm-rmm-server-1 grep -n "prefix=\|CONNECTOR_DIR\|DOWNLOAD_DIR" /app/app/api/download.py` | Make the join page path match the prefix the container actually runs |
+| Download says "connector build not available" | Route reads a directory the files aren't in | **SERVER:** `docker exec rmm-rmm-server-1 ls -la /app/web/download` and `ls -la /var/www/rmm/download` | Bind-mount the host folder to the path the route reads (already in `docker-compose.yml`) |
+| Tray icon is a coloured box (Linux) | `pystray` fell back to `_xorg`, which paints a rectangle by design | **LAPTOP:** `python -c "import pystray; print(pystray.Icon.__module__)"` — `_xorg` is the fault, `_appindicator` is correct | `gi` must be bundled; the spec does this on Linux. No amount of redrawing fixes `_xorg` |
+| Remote control slow / low fps | Guest uplink saturated, or two streams competing | Read the **fps · kbps** readout in the viewer toolbar | ~2 fps at ~1 Mbps = link-limited. Tile streaming fixes it. Close extra console tabs — the thumbnail holds its own session |
+| Picture renders small in a big black area | Canvas smaller than the viewer and CSS only limits size | Look at `frame_max_width` in the connector's `config.json` | Canvas uses `h-full w-full object-contain`; raise `frame_max_width` |
+| New connector feature does nothing | Old connector still installed, or the singleton lock blocked the new one | On the guest: is the old process still running? | Kill it first: `pkill -f rmm-connector`, then download fresh. **Settings bake in at download time** |
+| Console changes don't appear after deploy | Copied to the wrong place, or ran the `scp` on the server | `curl ... \| grep -o 'index-...js'` | nginx serves **`/var/www/rmm`**, not the git repo. Deploy from the **laptop** |
+| Server won't start after an edit | Syntax error — a stray keystroke is enough | **SERVER:** `docker compose logs --tail=50 rmm-server` | The running container keeps working until rebuilt, so fix before `up --build` |
+
+### Two rules that would have saved the most time
+
+1. **Every command belongs to one machine.** Laptop builds and pushes; server
+   pulls, mounts and rebuilds. Running one on the other wastes a cycle and
+   looks like a code failure.
+2. **Measure before changing.** The lag was "fixed" three times by lowering
+   quality before the fps readout showed 2 fps at 930 kbps — link-limited, so
+   quality was never the lever.
+
+---
+
 Running log of what changed, what works, and what does not.
 Newest entry first. Times are EAT (UTC+3).
 
