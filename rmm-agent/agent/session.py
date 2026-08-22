@@ -44,6 +44,7 @@ class SessionManager:
         self._frame_task: asyncio.Task | None = None
         self._grabber: ScreenGrabber | None = None
         self._injector: InputInjector | None = None
+        self._blanker = None   # lazy Blanker, feature 6
         # Single worker so the mss instance stays on one thread.
         self._capture_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="capture")
 
@@ -116,6 +117,14 @@ class SessionManager:
             self._grabber = None
         self._injector = None
 
+        # Force-unblank: a session must never leave the guest stuck on black.
+        if self._blanker is not None:
+            try:
+                self._blanker.stop()
+            except Exception:
+                pass
+            self._blanker = None
+
         self.presence.set_status("online", "Connected")
         if notify and self.config.notify_on_session:
             self.presence.notify(
@@ -158,6 +167,19 @@ class SessionManager:
             # Keep pointer scaling correct for the new display geometry.
             self._injector.set_screen_size(size)
         return size
+
+    # --- privacy blank (feature 6, additive) --------------------------------
+    def set_blank(self, on: bool) -> bool:
+        """Toggle the guest's black privacy window. Returns the resulting state."""
+        if on:
+            if self._blanker is None:
+                from agent.blanker import Blanker
+                self._blanker = Blanker("Remote session in progress")
+            return self._blanker.start()
+        if self._blanker is not None:
+            self._blanker.stop()
+            self._blanker = None
+        return False
 
     # --- input -------------------------------------------------------------
     async def apply_input(self, action: str, payload: dict) -> None:

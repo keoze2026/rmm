@@ -59,6 +59,10 @@ ACTION_FS_WRITE = "fs_write"
 ACTION_MONITORS_LIST = "monitors_list"
 ACTION_MONITOR_SELECT = "monitor_select"
 
+# Privacy blank (feature 6). Additive; replies ride agent_event, no server change.
+ACTION_BLANK_ON = "blank_on"
+ACTION_BLANK_OFF = "blank_off"
+
 
 def _now_iso() -> str:
     return _dt.datetime.now(_dt.timezone.utc).isoformat()

@@ -38,7 +38,8 @@ jobs:
           sudo apt-get install -y python3-dev libgirepository1.0-dev \
             gir1.2-gtk-3.0 gir1.2-appindicator3-0.1 \
             libcairo2-dev pkg-config python3-gi \
-            xvfb libxtst6 libpng-dev
+            xvfb libxtst6 libpng-dev \
+            python3-tk
 
       - name: Install dependencies
         run: |

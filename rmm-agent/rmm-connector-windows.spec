@@ -66,7 +66,7 @@ a = Analysis(
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
-    excludes=["tkinter", "matplotlib", "numpy"],
+    excludes=["matplotlib", "numpy"]  # tkinter kept: privacy-blank window (feature 6),
     noarchive=False,
 )
 

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { MousePointer2, EyeOff, X, Maximize2, TerminalSquare, FolderOpen,
-  Camera, ZoomIn, ZoomOut, Pencil, Eraser, Upload, Download, Monitor } from 'lucide-react'
+  Camera, ZoomIn, ZoomOut, Pencil, Eraser, Upload, Download, Monitor, EyeOff as EyeOffIcon } from 'lucide-react'
 import { useRemoteSession, type SessionStatus } from '../useRemoteSession'
 import { TerminalPanel } from './TerminalPanel'
 import { FilesPanel } from './FilesPanel'
@@ -75,6 +75,7 @@ export function RemoteViewer({ base, token, machine, onClose }: Props) {
   const overlayRef = useRef<HTMLCanvasElement | null>(null)
   const drawingRef = useRef(false)
   const [fileStatus, setFileStatus] = useState<string>('')
+  const [blanked, setBlanked] = useState(false)
   const [stats, setStats] = useState<{ fps: number; kbps: number }>({ fps: 0, kbps: 0 })
   const statRef = useRef({ frames: 0, bytes: 0 })
   const [monitors, setMonitors] = useState<Array<Record<string, number>>>([])
@@ -227,7 +228,10 @@ export function RemoteViewer({ base, token, machine, onClose }: Props) {
         statRef.current.bytes += Math.floor(String(m.data ?? '').length * 0.75)
       }
       if (m.type === 'agent_event') {
-        if (m.event === 'fs_write_done') {
+        if (m.event === 'blank_state') {
+          setBlanked(Boolean(m.on))
+          if (!m.ok) setFileStatus('Blank screen unavailable on the guest')
+        } else if (m.event === 'fs_write_done') {
           setFileStatus(`Sent to guest: ${String(m.path ?? '')}`)
           setTimeout(() => setFileStatus(''), 6000)
         } else if (m.event === 'fs_error') {
@@ -393,6 +397,11 @@ export function RemoteViewer({ base, token, machine, onClose }: Props) {
     [sendCommand]
   )
 
+  // Feature 6: black out the guest's screen while you work.
+  const toggleBlank = useCallback(() => {
+    sendCommand(blanked ? 'blank_off' : 'blank_on', {})
+  }, [sendCommand, blanked])
+
   const togglePanel = (p: Panel) => setPanel((cur) => (cur === p ? 'none' : p))
 
   return (
@@ -505,6 +514,14 @@ export function RemoteViewer({ base, token, machine, onClose }: Props) {
           )}
 
           <button
+            onClick={toggleBlank}
+            className={blanked ? 'btn-primary' : 'btn-ghost'}
+            title={blanked ? "Show the guest's screen" : "Blank the guest's screen"}
+          >
+            <EyeOffIcon className="h-4 w-4" />
+          </button>
+
+          <button
             onClick={() => uploadInputRef.current?.click()}
             className="btn-ghost"
             title="Send a file to the guest (lands in their home folder)"
@@ -544,7 +561,7 @@ export function RemoteViewer({ base, token, machine, onClose }: Props) {
             onMouseUp={onUp}
             onWheel={onWheel}
             onContextMenu={(e) => e.preventDefault()}
-            className="max-h-full max-w-full object-contain"
+            className="h-full w-full object-contain"
             style={{
               cursor: 'default',
               imageRendering: 'auto',

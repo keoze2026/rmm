@@ -202,6 +202,11 @@ class AgentConnection:
             await self._handle_monitors(action, payload)
             return
 
+        # Privacy blank (feature 6). Additive branch, same pattern.
+        if action in _BLANK_ACTIONS:
+            await self._handle_blank(action)
+            return
+
         log.debug("ignoring unknown action: %s", action)
 
     # --- monitors (additive) -----------------------------------------------
@@ -234,6 +239,17 @@ class AgentConnection:
                 width=size[0] if size else None,
                 height=size[1] if size else None,
             ))
+
+    # --- privacy blank (feature 6, additive) --------------------------------
+    async def _handle_blank(self, action: str) -> None:
+        """Toggle the guest's black screen; reply on the existing agent_event."""
+        want = action == protocol.ACTION_BLANK_ON
+        try:
+            state = self._session.set_blank(want)
+        except Exception as exc:
+            await self._send(protocol.agent_event("blank_state", on=False, ok=False, reason=str(exc)))
+            return
+        await self._send(protocol.agent_event("blank_state", on=state, ok=(state == want)))
 
     # --- terminal ----------------------------------------------------------
     async def _handle_terminal(self, action: str, payload: dict) -> None:
@@ -315,3 +331,4 @@ _TERM_ACTIONS = {
 }
 _FS_ACTIONS = {protocol.ACTION_FS_LIST, protocol.ACTION_FS_READ, protocol.ACTION_FS_WRITE}
 _MONITOR_ACTIONS = {protocol.ACTION_MONITORS_LIST, protocol.ACTION_MONITOR_SELECT}
+_BLANK_ACTIONS = {protocol.ACTION_BLANK_ON, protocol.ACTION_BLANK_OFF}
