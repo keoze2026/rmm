@@ -130,8 +130,18 @@ export function RemoteViewer({ base, token, machine, onClose }: Props) {
   const norm = (e: { clientX: number; clientY: number }): { x: number; y: number } => {
     const canvas = canvasRef.current!
     const r = canvas.getBoundingClientRect()
-    const x = Math.min(1, Math.max(0, (e.clientX - r.left) / r.width))
-    const y = Math.min(1, Math.max(0, (e.clientY - r.top) / r.height))
+    // The canvas element is full-size but the image is letterboxed inside it by
+    // object-contain, so map the click against the actual displayed image area,
+    // not the element box — otherwise every click lands offset.
+    const iw = canvas.width || r.width
+    const ih = canvas.height || r.height
+    const scale = Math.min(r.width / iw, r.height / ih) || 1
+    const dispW = iw * scale
+    const dispH = ih * scale
+    const offX = (r.width - dispW) / 2
+    const offY = (r.height - dispH) / 2
+    const x = Math.min(1, Math.max(0, (e.clientX - r.left - offX) / dispW))
+    const y = Math.min(1, Math.max(0, (e.clientY - r.top - offY) / dispH))
     return { x, y }
   }
 
@@ -399,8 +409,11 @@ export function RemoteViewer({ base, token, machine, onClose }: Props) {
 
   // Feature 6: black out the guest's screen while you work.
   const toggleBlank = useCallback(() => {
-    sendCommand(blanked ? 'blank_off' : 'blank_on', {})
-  }, [sendCommand, blanked])
+    // Temporarily disabled: the blank window can drop the guest offline.
+    // Parked until the agent-side fix ships; do nothing rather than risk it.
+    setFileStatus('Blank screen is temporarily disabled')
+    setTimeout(() => setFileStatus(''), 4000)
+  }, [])
 
   const togglePanel = (p: Panel) => setPanel((cur) => (cur === p ? 'none' : p))
 

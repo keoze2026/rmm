@@ -36,6 +36,7 @@ export function useRemoteSession(
   const decodingRef = useRef(false)
   const surfaceRef = useRef<HTMLCanvasElement | null>(null)
   const tileBusyRef = useRef(false)
+  const pendingTilesRef = useRef<Record<string, unknown> | null>(null)
   const pendingB64Ref = useRef<string | null>(null)
   const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const liveRef = useRef(false)
@@ -73,7 +74,13 @@ export function useRemoteSession(
   // to onFrame — so every consumer keeps receiving whole frames and needs no
   // change. Full-frame messages still take the path above.
   const decodeTiles = useCallback(async (msg: Record<string, unknown>) => {
-    if (tileBusyRef.current) return
+    // Never drop a batch: tiles are cumulative, so a skipped one leaves a
+    // permanent hole. Queue the newest and process it when the current one
+    // finishes, rather than throwing it away.
+    if (tileBusyRef.current) {
+      pendingTilesRef.current = msg
+      return
+    }
     tileBusyRef.current = true
     try {
       const w = Number(msg.width) || 0
@@ -98,12 +105,19 @@ export function useRemoteSession(
         bmp.close()
       }
       onFrameRef.current(await createImageBitmap(surface))
-    } catch {
-      // a bad tile batch just leaves the previous pixels in place
+    } catch (e) {
+      // Surface it instead of leaving a silent black screen.
+      setError(`Frame decode failed: ${e instanceof Error ? e.message : String(e)}`)
     } finally {
       tileBusyRef.current = false
+      const queued = pendingTilesRef.current
+      pendingTilesRef.current = null
+      if (queued) void decodeTilesRef.current?.(queued)
     }
   }, [])
+
+  const decodeTilesRef = useRef<((m: Record<string, unknown>) => void) | null>(null)
+  decodeTilesRef.current = decodeTiles
 
   const send = useCallback((msg: Record<string, unknown>) => {
     const ws = wsRef.current

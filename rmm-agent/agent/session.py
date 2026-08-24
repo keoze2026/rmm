@@ -197,11 +197,11 @@ class SessionManager:
             while self.active and self._grabber is not None:
                 tick = loop.time()
                 try:
-                    # A keyframe every few seconds repairs any tile that went
-                    # missing; everything between sends only what changed.
-                    want_key = (self._seq % max(1, int(self.config.frame_fps * 5))) == 0
+                    # Full-frame per grab: on a fast link this gives a higher,
+                    # smoother frame rate than per-tile JPEG encoding, which was
+                    # CPU-bound and capped the rate on a good connection.
                     encoded = await loop.run_in_executor(
-                        self._capture_pool, _grab_tiles, self._grabber, want_key
+                        self._capture_pool, self._grabber.grab
                     )
                 except Exception as exc:
                     log.error("frame grab failed: %s", exc)
