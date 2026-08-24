@@ -409,11 +409,8 @@ export function RemoteViewer({ base, token, machine, onClose }: Props) {
 
   // Feature 6: black out the guest's screen while you work.
   const toggleBlank = useCallback(() => {
-    // Temporarily disabled: the blank window can drop the guest offline.
-    // Parked until the agent-side fix ships; do nothing rather than risk it.
-    setFileStatus('Blank screen is temporarily disabled')
-    setTimeout(() => setFileStatus(''), 4000)
-  }, [])
+    sendCommand(blanked ? 'blank_off' : 'blank_on', {})
+  }, [sendCommand, blanked])
 
   const togglePanel = (p: Panel) => setPanel((cur) => (cur === p ? 'none' : p))
 
