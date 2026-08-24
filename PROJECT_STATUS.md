@@ -1,5 +1,53 @@
 # RMM — Project Status
 
+## 2026-08-22 — Feature 6 (blank guest screen) + per-platform reality
+
+### Feature 6: blank the guest's screen
+
+Purpose: when controlling the guest, the **guest sees black** but the **admin
+still sees and controls the real desktop**.
+
+- First cut was wrong: it put a black window on the guest's screen, but the
+  agent captures that same screen, so the admin also saw black — useless.
+- **Windows fix (works):** the black window uses `SetWindowDisplayAffinity`
+  with `WDA_EXCLUDEFROMCAPTURE` — visible to the person at the machine,
+  excluded from screen capture, so the admin sees the real desktop behind it.
+  ctypes only, no dependency. Needs Windows 10 2004+.
+  *Caveat:* honored for certain by modern capture APIs; whether `mss`'s BitBlt
+  path respects it must be confirmed on real Windows (couldn't verify in dev).
+  Fallback if not: switch the Windows agent capture to the modern API.
+- **Linux/Mac:** no simple equivalent. Blank-privacy is Windows-only for now.
+
+### Tray icon — the real story
+
+The icon CODE never changed. The arcs showed on a build made **locally on the
+dev machine**, which could reach the system tray libraries. The **CI build**
+does not bundle those libraries (GI typelibs + libappindicator), so it falls
+back to pystray's `_xorg` backend, which paints a box.
+
+- **Windows / Mac:** native tray backends, no such dependency — icon works.
+- **Linux:** shows a box on CI builds until the typelibs are bundled. Parked;
+  Linux is not the demo platform.
+
+### Per-platform status (build agent-v2.6.2)
+
+| Feature | Windows | macOS | Linux |
+|---|---|---|---|
+| Enrol / bind / stream | ✅ | ✅ | ✅ |
+| Tile speed (changed-region) | ✅ | ✅ | ✅ |
+| Tray icon (logo) | ✅ | ✅ | ❌ box (typelibs unbundled) |
+| Screenshot/zoom/annotate/files | ✅ | ✅ | ✅ |
+| Monitor switcher | ✅ | ✅ | ✅ |
+| Blank guest screen (privacy) | ✅ (verify on HW) | ❌ | ❌ |
+
+### Parked (post-demo)
+
+- Linux tray icon: bundle GI typelibs + libappindicator in the spec (a wrong
+  spec edit breaks all three builds, so do it isolated, not in a rushed build).
+- Blank-privacy on macOS/Linux: needs a per-window capture-exclusion path.
+
+---
+
 ## Fast diagnosis
 
 Symptom first. Each row has the **one command that confirms it**, so you are
