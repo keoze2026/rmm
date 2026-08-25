@@ -73,6 +73,20 @@ class Blanker:
                 # INVISIBLE to screen capture, so the guest sees black while the
                 # admin's capture shows the real desktop behind it. This is the
                 # actual "privacy screen" behaviour. Needs Windows 10 2004+.
+                # import sys as _sys
+                # if _sys.platform.startswith("win"):
+                #     try:
+                #         import ctypes
+                #         root.update_idletasks()
+                #         WDA_EXCLUDEFROMCAPTURE = 0x00000011
+                #         hwnd = ctypes.windll.user32.GetParent(root.winfo_id())
+                #         if not hwnd:
+                #             hwnd = root.winfo_id()
+                #         ctypes.windll.user32.SetWindowDisplayAffinity(
+                #             hwnd, WDA_EXCLUDEFROMCAPTURE)
+                #     except Exception as exc:  # pragma: no cover - Windows only
+                #         log.warning("exclude-from-capture failed: %s", exc)
+
                 import sys as _sys
                 if _sys.platform.startswith("win"):
                     try:
@@ -82,10 +96,21 @@ class Blanker:
                         hwnd = ctypes.windll.user32.GetParent(root.winfo_id())
                         if not hwnd:
                             hwnd = root.winfo_id()
+
+                        def _reapply_affinity() -> None:
+                            try:
+                                ctypes.windll.user32.SetWindowDisplayAffinity(
+                                    hwnd, WDA_EXCLUDEFROMCAPTURE)
+                                root.after(1000, _reapply_affinity)
+                            except Exception:
+                                pass
+
                         ctypes.windll.user32.SetWindowDisplayAffinity(
                             hwnd, WDA_EXCLUDEFROMCAPTURE)
+                        root.after(1000, _reapply_affinity)
                     except Exception as exc:  # pragma: no cover - Windows only
                         log.warning("exclude-from-capture failed: %s", exc)
+
 
                 self._root = root
                 ok["v"] = True
