@@ -277,27 +277,7 @@
 #         self._thread = None
 
 
-
-
-
-
-
-
-
-"""Privacy blank: a fullscreen black window on the guest during a session.
-
-Self-contained and lazy: tkinter is imported only when blanking is actually
-requested, so a headless box (CI, a build server) never touches it and the
-rest of the agent stays importable without a display.
-
-The window runs on its own thread with its own tkinter mainloop, so it never
-blocks the asyncio event loop or the capture/heartbeat tasks. It does NOT
-touch the tray icon — the agent stays visible, by design.
-
-Best-effort by nature: this is a userland always-on-top window, not a secure
-desktop. It hides the screen from a casual onlooker; it is not a guarantee the
-local user cannot get past it.
-"""
+"""Privacy blank: a fullscreen black window on the guest during a session."""
 from __future__ import annotations
 
 import logging
@@ -307,8 +287,6 @@ log = logging.getLogger("agent.blanker")
 
 
 class Blanker:
-    """Owns at most one black fullscreen window, toggled on and off."""
-
     def __init__(self, message: str = "") -> None:
         self._message = message
         self._thread: threading.Thread | None = None
@@ -320,12 +298,11 @@ class Blanker:
         return self._on
 
     def start(self) -> bool:
-        """Show the black window. Returns True if it is (or already was) up."""
         if self._on:
             return True
         try:
-            import tkinter  # noqa: F401  (probe: fail fast if Tk is missing)
-        except Exception as exc:  # pragma: no cover - platform dependent
+            import tkinter  # noqa: F401
+        except Exception as exc:
             log.warning("blank unavailable: tkinter missing (%s)", exc)
             return False
 
@@ -347,6 +324,7 @@ class Blanker:
                         root, text=self._message, fg="#888888", bg="black",
                         font=("Arial", 20),
                     ).pack(expand=True)
+
                 def _reassert() -> None:
                     try:
                         root.attributes("-topmost", True)
@@ -354,6 +332,7 @@ class Blanker:
                     except Exception:
                         pass
                 root.after(1000, _reassert)
+
                 import sys as _sys
                 if _sys.platform.startswith("win"):
                     try:
@@ -363,32 +342,16 @@ class Blanker:
                         hwnd = ctypes.windll.user32.GetParent(root.winfo_id())
                         if not hwnd:
                             hwnd = root.winfo_id()
-
                         ctypes.windll.user32.SetWindowDisplayAffinity(
                             hwnd, WDA_EXCLUDEFROMCAPTURE)
-
-                        def _reapply_loop() -> None:
-                            import time
-                            while self._on:
-                                time.sleep(1)
-                                try:
-                                    ctypes.windll.user32.SetWindowDisplayAffinity(
-                                        hwnd, WDA_EXCLUDEFROMCAPTURE)
-                                except Exception:
-                                    return
-
-                        threading.Thread(
-                            target=_reapply_loop, daemon=True,
-                            name="blanker-affinity",
-                        ).start()
-                    except Exception as exc:  # pragma: no cover - Windows only
+                    except Exception as exc:
                         log.warning("exclude-from-capture failed: %s", exc)
 
                 self._root = root
                 ok["v"] = True
                 ready.set()
                 root.mainloop()
-            except Exception as exc:  # pragma: no cover - platform dependent
+            except Exception as exc:
                 log.warning("blank window failed: %s", exc)
                 ready.set()
 
@@ -399,7 +362,6 @@ class Blanker:
         return self._on
 
     def stop(self) -> None:
-        """Remove the black window. Safe to call when already off."""
         root = self._root
         self._root = None
         self._on = False
