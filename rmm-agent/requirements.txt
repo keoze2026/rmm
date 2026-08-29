@@ -6,6 +6,13 @@ Pillow==11.0.0
 # Screen capture
 mss==9.0.2
 
+# Windows only: composition-aware capture (Windows.Graphics.Capture) so the
+# privacy-blank window's capture-exclusion coexists with live capture. mss's
+# BitBlt goes stale under WDA_EXCLUDEFROMCAPTURE; WGC does not. numpy is a WGC
+# frame-buffer dependency. Neither installs on Linux/macOS (mss handles those).
+windows-capture>=1.2,<2 ; sys_platform == "win32"
+numpy>=1.26,<3 ; sys_platform == "win32"
+
 # Remote input INJECTION (Controllers only — no Listeners/keylogging)
 pynput==1.7.7
 

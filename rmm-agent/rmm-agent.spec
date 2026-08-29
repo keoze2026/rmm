@@ -28,7 +28,11 @@ if sys.platform.startswith("linux"):
     _add("gi")
 
 if sys.platform.startswith("win"):
-    hiddenimports += ["mss.windows", "pynput.keyboard._win32", "pynput.mouse._win32", "pystray._win32"]
+    # Composition-aware capture for the privacy blank (see capture_win.py).
+    _add("windows_capture")
+    _add("numpy")
+    hiddenimports += ["mss.windows", "pynput.keyboard._win32", "pynput.mouse._win32", "pystray._win32",
+                      "windows_capture", "numpy"]
 elif sys.platform == "darwin":
     hiddenimports += ["mss.darwin", "pynput.keyboard._darwin", "pynput.mouse._darwin", "pystray._darwin"]
 else:
@@ -51,7 +55,9 @@ a = Analysis(
     datas=datas,
     hiddenimports=hiddenimports,
     # tkinter kept: privacy-blank window (feature 6)
-    excludes=["matplotlib", "numpy"],
+    # numpy no longer excluded: Windows.Graphics.Capture needs it (Windows only;
+    # it isn't installed on Linux/macOS, so nothing to bundle there anyway).
+    excludes=["matplotlib"],
     noarchive=False,
 )
 

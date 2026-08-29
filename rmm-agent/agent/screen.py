@@ -12,7 +12,11 @@ from __future__ import annotations
 
 import base64
 import io
+import logging
+import sys
 from dataclasses import dataclass
+
+log = logging.getLogger("agent.screen")
 
 
 @dataclass
@@ -84,6 +88,7 @@ class ScreenGrabber:
         self._sct = None
         self._geometry: tuple[int, int] | None = None
         self._prev = None   # previous frame, for tile diffing
+        self._wgc = None    # Windows.Graphics.Capture source, when available
 
     def start(self) -> None:
         import mss  # imported lazily; needs a display, real machines only
@@ -92,6 +97,45 @@ class ScreenGrabber:
         idx = self.monitor_index if self.monitor_index < len(mons) else 0
         mon = mons[idx]
         self._geometry = (mon["width"], mon["height"])
+        self._maybe_start_wgc()
+
+    def _maybe_start_wgc(self) -> None:
+        """On Windows, prefer Windows.Graphics.Capture so the privacy-blank
+        window's capture-exclusion coexists with live capture. mss stays as the
+        fallback if the backend is missing or fails."""
+        if not sys.platform.startswith("win"):
+            return
+        try:
+            from agent.capture_win import WGCSource
+            wgc = WGCSource(self.monitor_index)
+            if wgc.start(timeout=5.0):
+                self._wgc = wgc
+                g = wgc.geometry()
+                if g:
+                    self._geometry = g
+                log.info("screen capture: using Windows.Graphics.Capture")
+            else:
+                wgc.stop()
+                log.warning("WGC produced no frame in time; using mss")
+        except Exception as exc:
+            log.warning("WGC unavailable, using mss: %s", exc)
+
+    def _grab_raw_pil(self):
+        """Return the current frame as a PIL RGB Image.
+
+        Uses the WGC source when active (composition-aware, survives capture
+        exclusion); otherwise mss. One place, so grab() and grab_tiles() share it.
+        """
+        from PIL import Image
+        if self._wgc is not None:
+            pil = self._wgc.latest_pil()
+            if pil is not None:
+                return pil
+            # Not ready yet this tick — fall through to mss for one frame.
+        mons = self._sct.monitors
+        idx = self.monitor_index if self.monitor_index < len(mons) else 0
+        shot = self._sct.grab(mons[idx])
+        return Image.frombytes("RGB", shot.size, shot.bgra, "raw", "BGRX")
 
     @property
     def geometry(self) -> tuple[int, int] | None:
@@ -100,11 +144,7 @@ class ScreenGrabber:
     def grab(self) -> EncodedFrame:
         if self._sct is None:
             raise RuntimeError("ScreenGrabber.start() must be called first")
-        from PIL import Image
-        mons = self._sct.monitors
-        idx = self.monitor_index if self.monitor_index < len(mons) else 0
-        shot = self._sct.grab(mons[idx])
-        img = Image.frombytes("RGB", shot.size, shot.bgra, "raw", "BGRX")
+        img = self._grab_raw_pil()
         return encode_frame(img, quality=self.quality, max_width=self.max_width)
 
     def set_monitor(self, index: int) -> tuple[int, int] | None:
@@ -121,6 +161,14 @@ class ScreenGrabber:
         self.monitor_index = idx
         mon = mons[idx]
         self._geometry = (mon["width"], mon["height"])
+        # WGC binds a monitor at start, so restart it on the new display.
+        if self._wgc is not None:
+            try:
+                self._wgc.stop()
+            except Exception:
+                pass
+            self._wgc = None
+            self._maybe_start_wgc()
         return self._geometry
 
     def grab_tiles(self, *, cols: int = 8, rows: int = 6, keyframe: bool = False) -> dict:
@@ -137,10 +185,7 @@ class ScreenGrabber:
         import base64 as _b64
         from PIL import Image
 
-        mons = self._sct.monitors
-        idx = self.monitor_index if self.monitor_index < len(mons) else 0
-        shot = self._sct.grab(mons[idx])
-        img = Image.frombytes("RGB", shot.size, shot.bgra, "raw", "BGRX")
+        img = self._grab_raw_pil()
 
         if self.max_width and img.size[0] > self.max_width:
             scale = self.max_width / float(img.size[0])
@@ -174,6 +219,12 @@ class ScreenGrabber:
         return {"tiles": tiles, "width": w, "height": h, "keyframe": keyframe}
 
     def close(self) -> None:
+        if self._wgc is not None:
+            try:
+                self._wgc.stop()
+            except Exception:
+                pass
+            self._wgc = None
         if self._sct is not None:
             try:
                 self._sct.close()

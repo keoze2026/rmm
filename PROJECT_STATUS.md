@@ -48,6 +48,52 @@ back to pystray's `_xorg` backend, which paints a box.
 
 ---
 
+## 2026-08-2x — Blank-privacy: Windows capture backend swapped to WGC
+
+### The bug (diagnosed live under pressure)
+
+Turning on blank froze the admin's view on a static frame. Root cause:
+`SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)` makes mss's BitBlt capture
+return a stale cached frame, so the tile-diff sees "no change" and stops
+sending. Reapplying the affinity on a timer (Tk `after()` or a plain thread)
+crashed `tcl86t.dll` (APPCRASH). Single-call version (agent-v2.6.8, deployed)
+doesn't crash but the view still goes static after a few seconds.
+
+### Fix — composition-aware capture on Windows
+
+- **New `agent/capture_win.py`** — `WGCSource`, a Windows.Graphics.Capture
+  backend running on its own thread (`start_free_threaded`), keeping the latest
+  frame. WGC honours `WDA_EXCLUDEFROMCAPTURE` the way DWM intends: it keeps
+  delivering live frames of the desktop *behind* the black window. (DXGI /
+  Desktop Duplication would NOT work — it captures the composed monitor output,
+  which still contains the black window.)
+- **`agent/screen.py`** — on Windows, `start()` tries WGC and falls back to mss
+  if unavailable; `grab()`/`grab_tiles()` pull frames through one helper.
+  Linux/macOS untouched — pure mss.
+- **`agent/blanker.py`** — back to a SINGLE `SetWindowDisplayAffinity` call, no
+  reapply (that was the `tcl86t.dll` crash). WGC keeps the exclusion effective,
+  so no reapply is needed.
+- **requirements/spec** — `windows-capture` + `numpy` added Windows-only
+  (`sys_platform == "win32"`); numpy un-excluded in the spec.
+
+Additive and guarded: if `windows-capture` is missing or WGC fails, it falls
+back to mss and nothing changes. `tests_e2e.py` passes.
+
+### Cannot verify from dev (no Windows box)
+
+The WGC path only runs on Windows and can't be tested here. Build via CI, run on
+a real Windows guest, and confirm: blank on → guest black, admin keeps a LIVE
+(not frozen) view and control. If WGC fails to init, it silently falls back to
+mss (frozen-view behaviour, but no crash).
+
+### Still open
+
+- **File logging in the compiled exe** — `console=False`, no file handler in
+  `main.py:_setup_logging`; add one so field crashes leave a log.
+- **Linux blanking** — not started.
+
+---
+
 ## Fast diagnosis
 
 Symptom first. Each row has the **one command that confirms it**, so you are
