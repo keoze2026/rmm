@@ -48,6 +48,37 @@ back to pystray's `_xorg` backend, which paints a box.
 
 ---
 
+## 2026-09-01 — Blank knocked the agent OFFLINE — real cause found + fixed
+
+### Symptom
+Clicking the blank button dropped the agent offline (console shows it drop),
+on Windows AND Linux, even on the stable v2.6.8 build. (A red herring earlier:
+one of two Windows PCs was still on the old broken WGC build.)
+
+### Real cause (evidence-based, not a guess)
+`connection._handle_blank` runs in the asyncio event loop and called
+`self._session.set_blank(want)` **synchronously**. `set_blank` -> `Blanker.start()`
+does a blocking `threading.Event.wait(timeout=5)` while the black-window thread
+starts. That blocking wait **freezes the whole event loop** — including the
+heartbeat task — so the server stops receiving heartbeats and marks the agent
+offline. Every other blocking op (mouse/keyboard input) already uses
+`run_in_executor`; blank was the one that didn't.
+
+### Fix
+`agent/connection.py` — run `set_blank` in a worker thread:
+`state = await loop.run_in_executor(None, self._session.set_blank, want)`
+so the event loop keeps running and the heartbeat never stalls. One call
+changed; nothing else touched. Built on the stable v2.6.8 base (NO WGC).
+tests_e2e.py passes. Tag: agent-v2.6.9.
+
+### Scope note
+This fixes the OFFLINE problem. Blank's visual limits are unchanged and still
+need the driver: Windows freezes after a few seconds (single-call affinity +
+mss BitBlt), Linux shows black to the admin too (no capture-exclusion). Those
+remain phase-2. But the agent no longer drops when blank is toggled.
+
+---
+
 ## Fast diagnosis
 
 Symptom first. Each row has the **one command that confirms it**, so you are

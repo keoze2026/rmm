@@ -245,7 +245,11 @@ class AgentConnection:
         """Toggle the guest's black screen; reply on the existing agent_event."""
         want = action == protocol.ACTION_BLANK_ON
         try:
-            state = self._session.set_blank(want)
+            # set_blank() blocks (it waits for the black-window thread to start).
+            # Run it in a worker thread so it never stalls the event loop — a
+            # blocked loop misses heartbeats and the server marks us offline.
+            loop = asyncio.get_running_loop()
+            state = await loop.run_in_executor(None, self._session.set_blank, want)
         except Exception as exc:
             await self._send(protocol.agent_event("blank_state", on=False, ok=False, reason=str(exc)))
             return
